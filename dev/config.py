@@ -65,7 +65,7 @@ _CONFIG_ALL = dict(
             retry_delay = 5,
             archive = True,
             archive_path = 'data',
-            name_fmt = lambda suffix: "daily_pop_stats_{}.{}".format(datetime.datetime.utcnow().strftime("%Y-%m-%dT%H%M%_SUTC"), suffix),
+            name_fmt = lambda suffix: "daily_pop_stats_{}.{}".format(datetime.datetime.utcnow().strftime("%Y-%m-%dT%H%M%SUTC"), suffix),
             pdf_filename = lambda: _DATA_SOURCE['name_fmt']('pdf') if _DATA_SOURCE['archive'] else "current_data.pdf",
             text_filename = lambda: _DATA_SOURCE['name_fmt']('txt') if _DATA_SOURCE['archive'] else "current_data.txt",
             archive_pdf = lambda: os.path.join(_DATA_SOURCE['archive_path'], _DATA_SOURCE['pdf_filename']()),
@@ -73,7 +73,15 @@ _CONFIG_ALL = dict(
         ),
         database = dict(
             active = True,
-            name = "/Users/james/Dropbox/Work/CodeForSanJose/JailStats/dev/jailstats.db",
+            name = '/Users/james/Dropbox/Work/CodeForSanJose/JailStats/dev/jailstats.db',
+        ),
+        gspread = dict(
+            active = True,
+            name = "SCC Daily Jail Stats",
+            credentials_file = '/Users/james/Dropbox/Development/.keys/Google/CFSJ/CFSJ-JailStats-4898258d3468.json',
+            worksheets = ['Total', 'Men', 'Women'],
+            mode = 'insert',
+            insert_at = 4,
         ),
     ),
     prod = dict(
@@ -91,15 +99,15 @@ _CONFIG_ALL = dict(
             stdout = dict(
                 active = True,
                 level = logging.DEBUG,
-                format = '[%(levelname) -8s %(asctime)s %(name)s:%(funcName)s:%(lineno)d)] %(message)s',
+                format = "[%(levelname) -8s %(asctime)s %(name)s:%(funcName)s:%(lineno)d)] %(message)s",
                 datefmt = '%y-%m-%d %H:%M:%S',
             ),
             file = dict(
                 active = True,
                 level = logging.DEBUG,
                 # format = '%(levelname) -8s %(asctime)s %(name) -30s %(funcName) -35s %(lineno) -5d: %(message)s',
-                format = '[%(levelname) -8s %(asctime)s %(name)s:%(funcName)s:%(lineno)d)] %(message)s',
-                datefmt = '%y-%m-%d %H:%M:%S',
+                format = "[%(levelname) -8s %(asctime)s %(name)s:%(funcName)s:%(lineno)d)] %(message)s",
+                datefmt = "%y-%m-%d %H:%M:%S",
                 path = 'logs',
                 filename = 'capture.log',
             ),
@@ -120,6 +128,12 @@ _CONFIG_ALL = dict(
             active = True,
             name = "/Users/james/Dropbox/Work/CodeForSanJose/JailStats/dev/jailstats.db",
         ),
+        gspread=dict(
+            active=True,
+            name="SCC Daily Jail Stats",
+            credentials_file='/Users/james/Dropbox/Development/.keys/Google/CFSJ/CFSJ-JailStats-4898258d3468.json',
+            worksheets = ["Total", "Men", "Women"],
+        ),
     ),
 )
 
@@ -130,6 +144,7 @@ _DEBUG_G = _CONFIG['instrumentation']['general']
 _DATA_SOURCE = _CONFIG['data_source']
 _DATABASE = _CONFIG['database']
 _LOGS = _CONFIG['logs']
+_GSPREAD = _CONFIG['gspread']
 
 def config_init():
     # Read the email credentials

@@ -3,6 +3,23 @@
 
 ## Log
 
+### 2016.05.18 - Wed
+
+* Spreadsheet code working.
+* Uploaded all current data in SQLite DB to Spreadsheet.
+* Created a public read-only link to the spreadsheet.
+
+### 2016.05.16 - Mon
+
+* Started Spreadsheet code.
+
+### 2016.05.13 - Fri
+
+* Downloading and parsing files working OK (capture.py).
+* Simple REST web site working OK.
+* Scheduler working well.
+* Logging / error handling in place
+
 ### 2016.05.12 - Thu
 
 * Downloading and parsing files working OK (capture.py).
