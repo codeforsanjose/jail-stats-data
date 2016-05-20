@@ -26,6 +26,7 @@ class Spreadsheet(object):
         scope = ['https://spreadsheets.google.com/feeds']
         credentials = ServiceAccountCredentials.from_json_keyfile_name(credentials_file, scope)
         gcred = gspread.authorize(credentials)
+        LOGGER.debug("Opening spreadsheet: {}".format(name))
         self.sheet = gcred.open(name)
         self.ws = dict()
         for wname in worksheets:

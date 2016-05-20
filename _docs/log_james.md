@@ -3,6 +3,14 @@
 
 ## Log
 
+### 2016.05.20 - Fri
+
+* 
+
+### 2016.05.19 - Thu
+
+* Modified config to use a base config, and overrides for test vs. prod.  Don't like it... required globals to be exposed as lambda's.  More massaging needed...
+
 ### 2016.05.18 - Wed
 
 * Spreadsheet code working.

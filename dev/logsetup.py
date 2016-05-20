@@ -3,7 +3,7 @@
 import os, sys
 import logging
 import logging.handlers
-from config import _CONFIG, _DEBUG_G, _LOGS
+from config import _LOGS
 
 from pprint import pprint, pformat
 from show import show
@@ -14,7 +14,7 @@ show.prettyprint()
 
 
 def configure_log(name: object) -> None:
-    ccon, cfile, cemail = _LOGS['stdout'], _LOGS['file'], _LOGS['email']
+    ccon, cfile, cemail = _LOGS('stdout'), _LOGS('file'), _LOGS('email')
 
     root = logging.getLogger(name)
     root.setLevel(ccon['level'])
@@ -32,5 +32,11 @@ def configure_log(name: object) -> None:
         fh.setFormatter(logging.Formatter(cfile['format'], datefmt=cfile['datefmt']))
         root.addHandler(fh)
 
-    # if cemail['active']:
+    if cemail['active']:
+        eh = logging.handlers.SMTPHandler(**cemail['handler'])
+        eh.setLevel(cemail['level'])
+        eh.setFormatter(logging.Formatter(cemail['format'], datefmt=cfile['datefmt']))
+        root.addHandler(eh)
+
+
 

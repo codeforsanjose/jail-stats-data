@@ -18,9 +18,10 @@ import sqlite3 as lite
 from PDFlib.TET import *
 from apscheduler.schedulers.background import BackgroundScheduler
 
-from config import _SCHEDULER, _DEBUG_G, _DEBUG, _DATA_SOURCE, _DATABASE, _GSPREAD, config_init
+from config import _SCHEDULER, _DATA_SOURCE, _DATABASE, _GSPREAD, config_init
 from parse_pdf import parse_text_file
 from spreadsheet import Spreadsheet
+import logsetup
 
 from pprint import pprint, pformat
 from show import show
@@ -29,32 +30,22 @@ show.set(fmtfunc=pformat)
 show.prettyprint()
 
 
-# Init
-config_init()
-
-# Log setup
-import logsetup as logsetup
-logsetup.configure_log('capture')
-logsetup.configure_log('apscheduler')
-LOGGER = logging.getLogger('capture')
-
-
 db_name = "/Users/james/Dropbox/Work/CodeForSanJose/JailStats/dev/jailstats.db"
 sched = BackgroundScheduler()
-sched.configure(logger=LOGGER, job_defaults=dict(coalesce=True, misfire_grace_time=1, max_instances=1), timezone=_SCHEDULER['timezone'])
 
 SYS_SHUTDOWN = False
 EXIT_CODE = 0
 _OPTIONS = argparse.Namespace()
+LOGGER = logging.Logger('capture')
 
 exc_msg = lambda ex: "An exception of type {0} occured. Arguments:\n{1!r}".format(type(ex).__name__, ex.args)
 
 def download_pdf():
     LOGGER.debug("Retrieving PDF...")
-    retries = _DATA_SOURCE['retries']
-    retry_delay = _DATA_SOURCE['retry_delay']
-    url = _DATA_SOURCE['url']
-    localFile = _DATA_SOURCE['archive_pdf']()
+    retries = _DATA_SOURCE()['retries']
+    retry_delay = _DATA_SOURCE()['retry_delay']
+    url = _DATA_SOURCE()['url']
+    localFile = _DATA_SOURCE()['archive_pdf']()
 
     for n in range(retries):
         try:
@@ -215,7 +206,7 @@ def save_all_to_gs():
 
 
 def save_row_to_gs(stats):
-    ss = Spreadsheet(data = stats, **_GSPREAD)
+    ss = Spreadsheet(data = stats, **_GSPREAD())
     ss.save()
 
 
@@ -225,7 +216,7 @@ def signal_handler(signal, frame):
 
 
 def capture():
-    localText = _DATA_SOURCE['archive_text']()
+    localText = _DATA_SOURCE()['archive_text']()
     if _OPTIONS.in_file is None:
         localPDF = download_pdf()
         stats = pdf_to_text(localPDF, localText)
@@ -234,68 +225,72 @@ def capture():
     LOGGER.debug("localText: {}".format(localText))
     LOGGER.debug(pformat(stats))
 
-    if _DATABASE['active']:
+    if _DATABASE()['active']:
         save_to_db(stats)
     else:
         LOGGER.info("Data not saved - DB is inactive!")
 
-    if _GSPREAD['active']:
+    if _GSPREAD()['active']:
         save_row_to_gs(stats)
     else:
         LOGGER.info("Data not saved - DB is inactive!")
 
 
 def main():
-    global _OPTIONS, sched, SYS_SHUTDOWN
+    global _OPTIONS, sched, SYS_SHUTDOWN, LOGGER
 
     parser = argparse.ArgumentParser(
         description='This program queries the current Santa Clara Country Sheriff Daily Jail Population Statistics, and pushes the data into the "jailstats" SQLite DB.')
     parser.add_argument("-d", "--debug", default=False, dest="debug", action="store_true",
-                        help="Display debug messages.")
+                        help="Run in test mode, with debug logging.")
     parser.add_argument("-i", "--immediate", default=False, dest="immediate", action="store_true",
                         help="Run capture once and exit.")
-    parser.add_argument("-a", "--at", dest="hour", type=int, default=7,
-                        help="Capture will run once a day at the hour specified (24 hour time!).")
     parser.add_argument("-f", "--file", dest="in_file", type=str,
                         help="Use the specified local PDF file as input.")
     parser.add_argument("-s", "--save", default=False, dest="save_to_db", action="store_true",
                         help="Save ALL current data to the Google spreadsheet.")
     _OPTIONS = parser.parse_args()
-    pprint(_OPTIONS)
+
+    # Load config
+    config_init('test' if _OPTIONS.debug else 'prod')
+
+    # Setup logging
+    logsetup.configure_log('capture')
+    logsetup.configure_log('apscheduler')
+    LOGGER = logging.getLogger('capture')
+
+    LOGGER.debug("Options: %s", pformat(_OPTIONS))
 
     # Save to DB
     if _OPTIONS.save_to_db:
         print("Initiating Save To DB...")
         save_all_to_gs()
-        sys.exit(EXIT_CODE)
 
     # Run once!
-    if _OPTIONS.immediate:
+    elif _OPTIONS.immediate:
         capture()
-        sys.exit(EXIT_CODE)
 
-    # Didn't specify the hour
-    if 0 > _OPTIONS.hour >= 24:
-        print("Invalid run time specified - must be an hour between 0 and 23.")
-        sys.exit(EXIT_CODE)
+    # Run the scheduler.
+    else:
+        signal.signal(signal.SIGINT, signal_handler)
 
-    signal.signal(signal.SIGINT, signal_handler)
+        sched.configure(logger=LOGGER, job_defaults=dict(coalesce=True, misfire_grace_time=1, max_instances=1),
+                        timezone=_SCHEDULER()['timezone'])
+        sched.start()
+        sched.add_job(capture, 'cron', **_SCHEDULER()['schedule'])
+        sched.print_jobs()
 
-    sched.start()
-    sched.add_job(capture, 'cron', **_SCHEDULER['schedule'])
-    sched.print_jobs()
+        print('Type "shutdown" to kill the program: ')
+        command = ''
+        while command.lower() != 'shutdown' and SYS_SHUTDOWN == False:
+            i, o, e = select.select([sys.stdin], [], [], 10)
+            if (i):
+                command = sys.stdin.readline().strip()
+                # else:
+                #     print ".",
 
-    print('Type "shutdown" to kill the program: ')
-    command = ''
-    while command.lower() != 'shutdown' and SYS_SHUTDOWN == False:
-        i, o, e = select.select([sys.stdin], [], [], 10)
-        if (i):
-            command = sys.stdin.readline().strip()
-            # else:
-            #     print ".",
-
-    LOGGER.info('Scheduler shutting down now.')
-    sched.shutdown()  # Not strictly necessary if daemonic mode is enabled but should be done if possible
+        LOGGER.info('Scheduler shutting down now.')
+        sched.shutdown()  # Not strictly necessary if daemonic mode is enabled but should be done if possible
 
     sys.exit(EXIT_CODE)
 
