@@ -18,7 +18,7 @@ import sqlite3 as lite
 from PDFlib.TET import *
 from apscheduler.schedulers.background import BackgroundScheduler
 
-from config import _SCHEDULER, _DATA_SOURCE, _DATABASE, _GSPREAD, config_init
+from config import config_init
 from parse_pdf import parse_text_file
 from spreadsheet import Spreadsheet
 import logsetup
@@ -30,7 +30,6 @@ show.set(fmtfunc=pformat)
 show.prettyprint()
 
 
-db_name = "/Users/james/Dropbox/Work/CodeForSanJose/JailStats/dev/jailstats.db"
 sched = BackgroundScheduler()
 
 SYS_SHUTDOWN = False
@@ -41,16 +40,19 @@ LOGGER = logging.Logger('capture')
 exc_msg = lambda ex: "An exception of type {0} occured. Arguments:\n{1!r}".format(type(ex).__name__, ex.args)
 
 def download_pdf():
+    global _DATA_SOURCE
+
     LOGGER.debug("Retrieving PDF...")
-    retries = _DATA_SOURCE()['retries']
-    retry_delay = _DATA_SOURCE()['retry_delay']
-    url = _DATA_SOURCE()['url']
-    localFile = _DATA_SOURCE()['archive_pdf']()
+    retries = _DATA_SOURCE['retries']
+    retry_delay = _DATA_SOURCE['retry_delay']
+    url = _DATA_SOURCE['url']
+    localfile = _DATA_SOURCE['archive_pdf']()
 
     for n in range(retries):
         try:
-            urlretrieve(url, localFile)
-            return localFile
+            urlretrieve(url, localfile)
+            LOGGER.debug("PDF saved as: {}".format(localfile))
+            return localfile
         except:
             print_exc()
             LOGGER.warning("Retrieve failed!  Retrying in: {} seconds...".format(retry_delay))
@@ -78,11 +80,7 @@ def pdf_to_text(in_file, outFile):
                     raise Exception("Error " + repr(tet.get_errnum()) + "in "
                                     + tet.get_apiname() + "(): " + tet.get_errmsg())
 
-                # get number of pages in the document */
                 n_pages = int(tet.pcos_get_number(doc, "length:pages"))
-                LOGGER.debug("Page count: {:d}".format(n_pages))
-
-                # loop over pages in the document */
                 for pageno in range(1, n_pages + 1):
 
                     pageoptlist = "granularity=page"
@@ -93,16 +91,12 @@ def pdf_to_text(in_file, outFile):
                               + tet.get_apiname() + "(): " + tet.get_errmsg())
                         continue  # try next page */
 
-                    # Retrieve all text fragments; This is actually not required
-                    # for granularity=page, but must be used for other granularities.
                     text = tet.get_text(page)
                     while (text != None):
                         data = parse_text_file(text)
                         text += "\n\n"
                         text += pformat(data)
-                        fp.write(text)  # print the retrieved text
-
-                        # print a separator between chunks of text
+                        fp.write(text)
                         fp.write(separator)
                         text = tet.get_text(page)
 
@@ -131,6 +125,8 @@ def pdf_to_text(in_file, outFile):
 def save_to_db(stats):
     con = None
     try:
+        db_name = _DATABASE['name']
+        LOGGER.debug("Saving data to database: {}".format(db_name))
         con = lite.connect(db_name)
         with con:
             con.execute("INSERT INTO daily VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
@@ -179,7 +175,7 @@ def save_to_db(stats):
         LOGGER.warning("The data is already in the database!")
 
     except Exception as e:
-        LOGGER.Exception("save_to_db() failed:")
+        LOGGER.exception("save_to_db() failed:")
 
 
 def save_all_to_gs():
@@ -191,6 +187,8 @@ def save_all_to_gs():
     con = None
     all_rows = []
     try:
+        db_name = _DATABASE['name']
+        LOGGER.debug("Saving data to database: {}".format(db_name))
         con = lite.connect(db_name)
         cur = con.cursor()
         with con:
@@ -206,8 +204,8 @@ def save_all_to_gs():
 
 
 def save_row_to_gs(stats):
-    ss = Spreadsheet(data = stats, **_GSPREAD())
-    ss.save()
+    global _GSPREAD
+    Spreadsheet(data = stats, **_GSPREAD)()
 
 
 def signal_handler(signal, frame):
@@ -216,28 +214,31 @@ def signal_handler(signal, frame):
 
 
 def capture():
-    localText = _DATA_SOURCE()['archive_text']()
+    global _DATA_SOURCE, _DATABASE, _GSPREAD
+
+    localText = _DATA_SOURCE['archive_text']()
     if _OPTIONS.in_file is None:
         localPDF = download_pdf()
         stats = pdf_to_text(localPDF, localText)
     else:
         stats = pdf_to_text(_OPTIONS.in_file, localText)
-    LOGGER.debug("localText: {}".format(localText))
-    LOGGER.debug(pformat(stats))
+    LOGGER.debug("Saving text file to: {}".format(localText))
+    LOGGER.debug("Stats data: {}".format(pformat(stats)))
 
-    if _DATABASE()['active']:
+    if _DATABASE['active']:
         save_to_db(stats)
     else:
-        LOGGER.info("Data not saved - DB is inactive!")
+        LOGGER.info("Data not saved to the Database - marked inactive!")
 
-    if _GSPREAD()['active']:
+    if _GSPREAD['active']:
         save_row_to_gs(stats)
     else:
-        LOGGER.info("Data not saved - DB is inactive!")
+        LOGGER.info("Data not written to the Spreadsheet - marked inactive!")
 
 
 def main():
     global _OPTIONS, sched, SYS_SHUTDOWN, LOGGER
+    global _SCHEDULER, _DATA_SOURCE, _DATABASE, _LOGS, _GSPREAD
 
     parser = argparse.ArgumentParser(
         description='This program queries the current Santa Clara Country Sheriff Daily Jail Population Statistics, and pushes the data into the "jailstats" SQLite DB.')
@@ -252,7 +253,9 @@ def main():
     _OPTIONS = parser.parse_args()
 
     # Load config
-    config_init('test' if _OPTIONS.debug else 'prod')
+    _SCHEDULER, _DATA_SOURCE, _DATABASE, _LOGS, _GSPREAD = config_init('test' if _OPTIONS.debug else 'prod')
+    show(_SCHEDULER, _DATA_SOURCE, _DATABASE, _LOGS, _GSPREAD)
+    show(_DATABASE['name'], _GSPREAD['name'])
 
     # Setup logging
     logsetup.configure_log('capture')
@@ -275,9 +278,9 @@ def main():
         signal.signal(signal.SIGINT, signal_handler)
 
         sched.configure(logger=LOGGER, job_defaults=dict(coalesce=True, misfire_grace_time=1, max_instances=1),
-                        timezone=_SCHEDULER()['timezone'])
+                        timezone=_SCHEDULER['timezone'])
         sched.start()
-        sched.add_job(capture, 'cron', **_SCHEDULER()['schedule'])
+        sched.add_job(capture, 'cron', **_SCHEDULER['schedule'])
         sched.print_jobs()
 
         print('Type "shutdown" to kill the program: ')

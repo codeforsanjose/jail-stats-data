@@ -35,8 +35,8 @@ def parse_text_file(text):
 
     doc = text.split('\n')
 
-    for i, t in enumerate(doc):
-        LOGGER.debug("line {:2d}: {}".format(i, t))
+    # for i, t in enumerate(doc):
+    #     LOGGER.debug("line {:2d}: {}".format(i, t))
 
     # ---------- General syntax checks -----------------
     # Check static full doc
@@ -48,13 +48,13 @@ def parse_text_file(text):
               (24, "days"),
               (37, "Age Profile")]
     for c in checks:
-        print("Checking line: {} is '{}' should be '{}'".format(c[0], doc[c[0]], c[1]))
+        # print("Checking line: {} is '{}' should be '{}'".format(c[0], doc[c[0]], c[1]))
         if doc[c[0]] != c[1]:
             raise ValueError(exc_msg.format(c[0]))
 
     # Lines ending with "%"
     for ln in [14, 15, 20, 21, 27, 28, 33, 34, 45, 46, 47, 48, 49]:
-        print("Line: {}  char: {}".format(ln, doc[ln][-1]))
+        # print("Line: {}  char: {}".format(ln, doc[ln][-1]))
         if doc[ln][-1] != "%":
             raise ValueError(exc_msg.format(ln))
 

@@ -3,7 +3,7 @@
 import os, sys
 import logging
 import logging.handlers
-from config import _LOGS
+from config import get_config
 
 from pprint import pprint, pformat
 from show import show
@@ -14,7 +14,8 @@ show.prettyprint()
 
 
 def configure_log(name: object) -> None:
-    ccon, cfile, cemail = _LOGS('stdout'), _LOGS('file'), _LOGS('email')
+    _, _, _, _LOGS, _ = get_config()
+    ccon, cfile, cemail = _LOGS['stdout'], _LOGS['file'], _LOGS['email']
 
     root = logging.getLogger(name)
     root.setLevel(ccon['level'])

@@ -14,7 +14,7 @@ from show import show
 show.set(where=True)
 show.set(fmtfunc=pformat)
 show.prettyprint()
-
+show.set(show=False)
 
 def str_to_class(str):
     return getattr(sys.modules[__name__], str)
@@ -30,16 +30,19 @@ class Spreadsheet(object):
         self.sheet = gcred.open(name)
         self.ws = dict()
         for wname in worksheets:
-            LOGGER.debug("Opening worksheet {}".format(wname))
+            LOGGER.debug("Opening worksheet '{}'".format(wname))
             try:
                 ws = self.sheet.worksheet(wname)
                 self.ws[wname] = Worksheet(wname, ws, data, mode, insert_at)
             except gspread.SpreadsheetNotFound:
                 LOGGER.error("Worksheet: {} not found!", wname)
 
+    def __call__(self):
+        return self.save()
+
     def save(self) -> None:
         for name, ws in self.ws.items():
-            LOGGER.debug("Calling save on {}".format(name))
+            LOGGER.debug("Writing '{}' to Spreadsheet".format(name))
             ws.save()
 
 

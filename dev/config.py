@@ -12,7 +12,15 @@ from show import show
 show.set(where=True)
 show.set(fmtfunc=pformat)
 show.prettyprint()
+show.set(show=True)
 
+'''
+The configuration uses a base configuration (prod_config), and optional overrides.  The base config, "prod_config",
+will be active if the environment is set to "prod" (the default).  If the program is run in debug mode (using the
+"-d" command line option), then the environment will be set to "test".  The test_config dict must have the same
+structure as prod_config, but need only contain the items to be overridden.  In other words, the base prod_config
+is used for all configuration settings, and individual settings can be overridden in the test_config.
+'''
 
 email_fmt1 = '''
 Message type:       %(levelname)s
@@ -26,38 +34,7 @@ Message:
 %(message)s
 '''
 
-_prod_config = dict(
-    database=dict(
-        active=True,
-        name='/Users/james/Dropbox/Work/CodeForSanJose/JailStats/dev/jailstats.db',
-    ),
-    gspread=dict(
-        active=True,
-        name="SCC Daily Jail Stats",
-        credentials_file='/Users/james/Dropbox/Development/.keys/Google/CFSJ/CFSJ-JailStats-4898258d3468.json',
-        worksheets=['Total', 'Men', 'Women'],
-        mode='insert',
-        insert_at=4,
-    ),
-)
-
-_test_config = dict(
-    database=dict(
-        active=True,
-        name='/Users/james/Dropbox/Work/CodeForSanJose/JailStats/dev/jailstats_test.db',
-    ),
-    gspread=dict(
-        active=True,
-        name="SCC Daily Jail Stats - Test",
-        credentials_file='/Users/james/Dropbox/Development/.keys/Google/CFSJ/CFSJ-JailStats-4898258d3468.json',
-        worksheets=['Total', 'Men', 'Women'],
-        mode='insert',
-        insert_at=4,
-    ),
-)
-
-
-_base_config = dict(
+prod_config = dict(
     scheduler = dict(
         timezone = 'US/Pacific',
         schedule = dict(
@@ -67,13 +44,13 @@ _base_config = dict(
     logs = dict(
         stdout = dict(
             active = True,
-            level = logging.DEBUG,
+            level = logging.WARNING,
             format = '[%(levelname) -8s %(asctime)s %(name)s:%(funcName)s:%(lineno)d)] %(message)s',
             datefmt = '%y-%m-%d %H:%M:%S',
         ),
         file = dict(
             active = True,
-            level = logging.DEBUG,
+            level = logging.WARNING,
             format = '[%(levelname) -8s %(asctime)s %(name)s:%(funcName)s:%(lineno)d)] %(message)s',
             datefmt = '%y-%m-%d %H:%M:%S',
             path = 'logs',
@@ -102,23 +79,79 @@ _base_config = dict(
         archive = True,
         archive_path = 'data',
         name_fmt = lambda suffix: "daily_pop_stats_{}.{}".format(datetime.datetime.utcnow().strftime("%Y-%m-%dT%H%M%SUTC"), suffix),
-        pdf_filename = lambda: _DATA_SOURCE()['name_fmt']('pdf') if _DATA_SOURCE()['archive'] else "current_data.pdf",
-        text_filename = lambda: _DATA_SOURCE()['name_fmt']('txt') if _DATA_SOURCE()['archive'] else "current_data.txt",
-        archive_pdf = lambda: os.path.join(_DATA_SOURCE()['archive_path'], _DATA_SOURCE()['pdf_filename']()),
-        archive_text = lambda: os.path.join(_DATA_SOURCE()['archive_path'], _DATA_SOURCE()['text_filename']()),
+        pdf_filename = lambda: _DATA_SOURCE['name_fmt']('pdf') if _DATA_SOURCE['archive'] else "current_data.pdf",
+        text_filename = lambda: _DATA_SOURCE['name_fmt']('txt') if _DATA_SOURCE['archive'] else "current_data.txt",
+        archive_pdf = lambda: os.path.join(_DATA_SOURCE['archive_path'], _DATA_SOURCE['pdf_filename']()),
+        archive_text = lambda: os.path.join(_DATA_SOURCE['archive_path'], _DATA_SOURCE['text_filename']()),
+    ),
+    database=dict(
+        active=True,
+        name='/Users/james/Dropbox/Work/CodeForSanJose/JailStats/dev/jailstats.db',
+    ),
+    gspread=dict(
+        active=True,
+        name="SCC Daily Jail Stats",
+        credentials_file='/Users/james/Dropbox/Development/.keys/Google/CFSJ/CFSJ-JailStats-4898258d3468.json',
+        worksheets=['Total', 'Men', 'Women'],
+        mode='insert',
+        insert_at=4,
     ),
 )
 
-_RUN_MODE = 'test'
-_SCHEDULER = lambda: _scheduler
-_DATA_SOURCE = lambda: _data_source
-_DATABASE = lambda: _database
-_LOGS = lambda x: _logs(x)
-_GSPREAD = lambda: _gspread
+test_config = dict(
+    logs = dict(
+        stdout = dict(
+            level = logging.DEBUG,
+        ),
+        file = dict(
+            level = logging.DEBUG,
+        ),
+        email=dict(
+            level=logging.ERROR,
+        ),
+    ),
+    database=dict(
+        name='/Users/james/Dropbox/Work/CodeForSanJose/JailStats/dev/jailstats_test.db',
+    ),
+    gspread=dict(
+        name="SCC Daily Jail Stats - Test",
+    ),
+)
+
+_config_built = False
 
 
-def config_init(mode='test'):
-    global _RUN_MODE, _CONFIG, _scheduler, _data_source, _database, _log_info, _logs, _gspread
+def build(env):
+    if env == 'prod':
+        config = prod_config
+    else:
+        config = dict()
+        if env == 'test':
+            override_config(prod_config, test_config, config)
+    return config
+
+
+def override_config(base, override, target):
+    show(base, override, "\n")
+    if not (type(base) in (dict, ChainMap) and type(override) == dict):
+        return
+
+    base_keys = set(base.keys())
+    override_keys = base_keys & set(override.keys())
+    show(base_keys, override_keys, "\n")
+    for k in override_keys:
+        if isinstance(base[k], dict):
+            target[k] = ChainMap(override[k], base[k])
+            show(k, base[k], override[k], "\n")
+            override_config(base[k], override[k], target[k])
+    for k in (base_keys - override_keys):
+        target[k] = base[k]
+
+
+def config_init(env='prod'):
+    global _SCHEDULER, _DATA_SOURCE, _DATABASE, _LOGS, _GSPREAD, _config_built
+
+    config = build(env)
 
     # Decode the JSON file containing the email credentials
     def object_decoder(obj):
@@ -126,81 +159,72 @@ def config_init(mode='test'):
             return (obj['username'], obj['password'])
         return obj
 
-    _RUN_MODE = mode
-    show(_RUN_MODE)
-    if _RUN_MODE == 'prod':
-        _CONFIG = ChainMap(_prod_config, _base_config)
-    else:
-        _CONFIG = ChainMap(_test_config, _base_config)
-
-    ecfg = _CONFIG['logs']['email']
+    ecfg = config['logs']['email']
     if ecfg['active']:
         with open(ecfg['credentials_file']) as data_file:
             data = json.load(data_file, object_hook=object_decoder)
-            _CONFIG['logs']['email']['handler']['credentials'] = data
-            pprint(ecfg)
+            config['logs']['email']['handler']['credentials'] = data
 
-    _scheduler = MappingProxyType(_CONFIG['scheduler'])
-    _data_source = MappingProxyType(_CONFIG['data_source'])
-    _database = MappingProxyType(_CONFIG['database'])
-    _log_info = MappingProxyType(_CONFIG['logs'])
-    _logs = lambda x: _log_info[x]
-    _gspread = MappingProxyType(_CONFIG['gspread'])
+    _SCHEDULER = MappingProxyType(config['scheduler'])
+    _DATA_SOURCE = MappingProxyType(config['data_source'])
+    _DATABASE = MappingProxyType(config['database'])
+    _LOGS = MappingProxyType(config['logs'])
+    _GSPREAD = MappingProxyType(config['gspread'])
 
-    return
+    _config_built = True
 
-def run_tests():
+    return _SCHEDULER, _DATA_SOURCE, _DATABASE, _LOGS, _GSPREAD
+
+
+def get_config():
+    global _SCHEDULER, _DATA_SOURCE, _DATABASE, _LOGS, _GSPREAD, _config_built
+    if not _config_built:
+        raise
+    return _SCHEDULER, _DATA_SOURCE, _DATABASE, _LOGS, _GSPREAD
+
+
+def run_checks():
+    global _SCHEDULER, _DATA_SOURCE, _DATABASE, _LOGS, _GSPREAD
+
     def print_var(x):
         print(("------------------ {0} ----------------".format(x)))
         pprint(eval(x))
 
-    print("=====================================================================================")
-    print("                                      DEBUG CONFIG")
-    print("=====================================================================================")
-    config_init('test')
-    show(_CONFIG)
-    SCHEDULER = _SCHEDULER()
-    show(SCHEDULER)
-    DATA_SOURCE = _DATA_SOURCE()
-    show(DATA_SOURCE)
-    DATABASE = _DATABASE()
-    show(DATABASE)
-    LOGS_STDOUT = _LOGS('stdout')
-    show(LOGS_STDOUT)
-    LOGS_FILE = _LOGS('file')
-    show(LOGS_FILE)
-    LOGS_EMAIL = _LOGS('email')
-    show(LOGS_EMAIL)
-    GSPREAD = _GSPREAD()
-    show(GSPREAD)
-    # print("==================================== ALL GLOBALS ===================================")
+    def show_dicts(title, scheduler, data_source, database, logs, gspread):
+        print("\n\n============================================================================================================")
+        print("                                      Environment: {}".format(title))
+        print("============================================================================================================")
+        show(scheduler)
+        show(data_source)
+        show(database)
+        show(logs)
+        show(gspread)
+        print("-------- Overrides -------------------")
+        show(_DATABASE['active'], _DATABASE['name'])
+        show(_GSPREAD['active'], _GSPREAD['name'])
+        show(_LOGS['stdout']['level'],_LOGS['file']['level'], _LOGS['email']['level'])
 
-    print("\n\n=====================================================================================")
-    print("                                      PROD CONFIG")
-    print("=====================================================================================")
-    config_init('prod')
-    show(_CONFIG)
-    SCHEDULER = _SCHEDULER()
-    show(SCHEDULER)
-    DATA_SOURCE = _DATA_SOURCE()
-    show(DATA_SOURCE)
-    DATABASE = _DATABASE()
-    show(DATABASE)
-    LOGS_STDOUT = _LOGS('stdout')
-    show(LOGS_STDOUT)
-    LOGS_FILE = _LOGS('file')
-    show(LOGS_FILE)
-    LOGS_EMAIL = _LOGS('email')
-    show(LOGS_EMAIL)
-    GSPREAD = _GSPREAD()
-    show(GSPREAD)
-    # print("==================================== ALL GLOBALS ===================================")
+    env = 'test'
+    scheduler, data_source, database, logs, gspread = config_init(env)
+    show_dicts(env, scheduler, data_source, database, logs, gspread)
+    # show_dicts(env, _SCHEDULER, _DATA_SOURCE, _DATABASE, _LOGS, _GSPREAD)
+    # scheduler1, data_source1, database1, logs1, gspread1 = config_init(env)
+    # show_dicts(env, scheduler1, data_source1, database1, logs1, gspread1)
+
+    env = 'prod'
+    _SCHEDULER, _DATA_SOURCE, _DATABASE, _LOGS, _GSPREAD = config_init(env)
+    show_dicts(env, _SCHEDULER, _DATA_SOURCE, _DATABASE, _LOGS, _GSPREAD)
+    #
+    # env = 'test'
+    # config_init(env)
+    # scheduler, data_source, database, logs, gspread = get_config()
+    # show_dicts(env, scheduler, data_source, database, logs, gspread)
 
     return
 
 
 def main():
-    run_tests()
+    run_checks()
 
 
 if __name__ == '__main__':

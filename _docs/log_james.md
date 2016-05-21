@@ -3,9 +3,13 @@
 
 ## Log
 
+### 2016.05.21 - Sat
+
+* Finished clean up of the Config system.  Config now uses a base (the production environment), but individual settings can be overridden in the test_config dictionary.
+
 ### 2016.05.20 - Fri
 
-* 
+* Cleaned up config.
 
 ### 2016.05.19 - Thu
 
