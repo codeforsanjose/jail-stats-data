@@ -7,4 +7,4 @@ DOCKER=$(ROOT)/_docker
 default: buildprod
 
 buildprod:
-    cp $(DEV)/*.py $(PROD)
+	cp $(DEV)/*.py $(PROD)

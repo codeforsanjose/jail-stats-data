@@ -3,6 +3,22 @@
 
 ## Log
 
+### 2016.05.24 - Tue
+
+* Added "env" positional variable to argparse.  Defaults to "prod".  The debug switch and the environment are now separate.
+* Test OK.
+* Saved to GIT.
+
+
+### 2016.05.23 - Mon
+
+* Added prod folder (will hold production Docker files).
+* Revised Config.
+* Loading into a Docker container:
+	* Using container "frolvlad/alpine-python3" as the base.
+	* The "show" package was not installing on the Docker alpine-python3 system (GCC missing).  Added override for "show" that supports all the show calls, but will use pprint.
+	* See the Docker config notes for more details.
+
 ### 2016.05.21 - Sat
 
 * Cleaned up of the Config system.  Config now uses a base (the production environment), but individual settings can be overridden in the test_config dictionary.
