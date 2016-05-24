@@ -22,6 +22,7 @@ from config import config_init
 from parse_pdf import parse_text_file
 from spreadsheet import Spreadsheet
 import logsetup
+from archives import maintain_archive
 
 from pprint import pprint, pformat
 from show import show
@@ -54,7 +55,8 @@ def download_pdf():
             LOGGER.debug("PDF saved as: {}".format(localfile))
             return localfile
         except:
-            print_exc()
+            if n == (retries-1):
+                print_exc()
             LOGGER.warning("Retrieve failed!  Retrying in: {} seconds...".format(retry_delay))
             time.sleep(retry_delay)
             retry_delay *= 2
@@ -234,6 +236,8 @@ def capture():
         save_row_to_gs(stats)
     else:
         LOGGER.info("Data not written to the Spreadsheet - marked inactive!")
+
+    maintain_archive()
 
 
 def main():

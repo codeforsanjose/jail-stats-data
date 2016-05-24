@@ -79,6 +79,8 @@ prod_config = dict(
         retry_delay = 5,
         archive = True,
         archive_path = 'archive',
+        archive_clean_active = True,
+        archive_clean_days = 21,
         name_fmt = lambda suffix: "daily_pop_stats_{}.{}".format(datetime.datetime.utcnow().strftime("%Y-%m-%dT%H%M%SUTC"), suffix),
         pdf_filename = lambda: _DATA_SOURCE['name_fmt']('pdf') if _DATA_SOURCE['archive'] else "current_data.pdf",
         text_filename = lambda: _DATA_SOURCE['name_fmt']('txt') if _DATA_SOURCE['archive'] else "current_data.txt",
@@ -112,8 +114,12 @@ prod_local_config = dict(
             level=logging.ERROR,
         ),
     ),
+    data_source = dict(
+        archive_clean_active = True,
+        archive_clean_days = 21,
+    ),
     database=dict(
-        name='/Users/james/Dropbox/Work/CodeForSanJose/JailStats/dev/data/jailstats.db',
+        name='/Users/james/Dropbox/Work/CodeForSanJose/JailStats/data/jailstats.db',
     ),
     gspread=dict(
         name="SCC Daily Jail Stats",
@@ -124,18 +130,23 @@ prod_local_config = dict(
 test_config = dict(
     logs = dict(
         stdout = dict(
-            level = logging.DEBUG,
+            level = logging.INFO,
         ),
         file = dict(
-            level = logging.DEBUG,
+            level = logging.INFO,
         ),
         email=dict(
             level=logging.ERROR,
         ),
     ),
+    data_source = dict(
+        archive_path = 'archive_test',
+        archive_clean_active = True,
+        archive_clean_days = 5,
+    ),
     database=dict(
         active=True,
-        name='/Users/james/Dropbox/Work/CodeForSanJose/JailStats/dev/data/jailstats_test.db',
+        name='/Users/james/Dropbox/Work/CodeForSanJose/JailStats/data/jailstats_test.db',
     ),
     gspread=dict(
         active=True,
@@ -225,6 +236,7 @@ def show_config(title, scheduler, data_source, database, logs, gspread):
     show(gspread)
     print("-------- Overrides -------------------")
     show(_DATABASE['active'], _DATABASE['name'])
+    show(_DATA_SOURCE['archive_path'], _DATA_SOURCE['archive_clean_active'], _DATA_SOURCE['archive_clean_days'])
     show(_GSPREAD['active'], _GSPREAD['name'])
     show(_LOGS['stdout']['level'], _LOGS['file']['level'], _LOGS['email']['level'])
     print(
@@ -239,19 +251,13 @@ def run_checks():
         pprint(eval(x))
 
     env = 'test'
-    scheduler, data_source, database, logs, gspread = config_init(env)
-    show_config(env, scheduler, data_source, database, logs, gspread)
-    # show_dicts(env, _SCHEDULER, _DATA_SOURCE, _DATABASE, _LOGS, _GSPREAD)
-    # scheduler1, data_source1, database1, logs1, gspread1 = config_init(env)
-    # show_dicts(env, scheduler1, data_source1, database1, logs1, gspread1)
+    _SCHEDULER, _DATA_SOURCE, _DATABASE, _LOGS, _GSPREAD = config_init(env)
 
     env = 'ptest'
     _SCHEDULER, _DATA_SOURCE, _DATABASE, _LOGS, _GSPREAD = config_init(env)
-    show_config(env, _SCHEDULER, _DATA_SOURCE, _DATABASE, _LOGS, _GSPREAD)
 
     env = 'prod'
     _SCHEDULER, _DATA_SOURCE, _DATABASE, _LOGS, _GSPREAD = config_init(env)
-    show_config(env, _SCHEDULER, _DATA_SOURCE, _DATABASE, _LOGS, _GSPREAD)
 
     return
 

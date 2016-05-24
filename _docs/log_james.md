@@ -8,6 +8,14 @@
 * Added "env" positional variable to argparse.  Defaults to "prod".  The debug switch and the environment are now separate.
 * Test OK.
 * Saved to GIT.
+* Added Archive Maintainer - will delete old files every run cycle.
+* Reorganized data and archive directories for easier deployment. 
+* Test OK.
+* Saved to GIT.
+* Docker:
+	* Tried using the frolvlad/alpine-python3 docker image... doesn't have SQLite, and there doesn't look to be an easy way to get it.  
+	* Trying prolocutor/docker-python-sqlite...
+	* 
 
 
 ### 2016.05.23 - Mon

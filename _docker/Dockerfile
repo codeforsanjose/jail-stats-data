@@ -1,9 +1,5 @@
 # JailStats Update Program
 
-FROM frolvlad/alpine-python3
+FROM python:3.5.1-onbuild
 
-COPY image/ /
-RUN apk add --update ca-certificates
-
-ENV PORT=80
-CMD ["/gateway", "-debug"]
+COPY /capture /

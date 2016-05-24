@@ -1,0 +1,6 @@
+pip >= 8.1.2
+apscheduler
+argparse
+gspread
+oauth2client
+pytz

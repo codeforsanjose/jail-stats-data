@@ -77,7 +77,7 @@ def parse_text_file(text):
         month = p(m.group(4))
         day = p(m.group(5))
         year = p(m.group(6))
-        print("Date: {}/{}/{}  time: {}:{:02d}".format(month, day, year, hour, minute))
+        LOGGER.info("Document date: {}/{}/{}  time: {}:{:02d}".format(month, day, year, hour, minute))
         data['at'] = pytz.timezone('US/Pacific').localize \
             (datetime.datetime(year=year, month=month, day=day, hour=hour, minute=minute))
         data['Year'] = data['at'].year
