@@ -34,6 +34,7 @@ Message:
 %(message)s
 '''
 
+# Docker Production Config
 prod_config = dict(
     scheduler = dict(
         timezone = 'US/Pacific',
@@ -49,8 +50,8 @@ prod_config = dict(
             datefmt = '%y-%m-%d %H:%M:%S',
         ),
         file = dict(
-            active = True,
-            level = logging.WARNING,
+            active = False,
+            level = logging.ERROR,
             format = '[%(levelname) -8s %(asctime)s %(name)s:%(funcName)s:%(lineno)d)] %(message)s',
             datefmt = '%y-%m-%d %H:%M:%S',
             path = 'logs',
@@ -77,7 +78,7 @@ prod_config = dict(
         retries = 10,
         retry_delay = 5,
         archive = True,
-        archive_path = 'data',
+        archive_path = 'archive',
         name_fmt = lambda suffix: "daily_pop_stats_{}.{}".format(datetime.datetime.utcnow().strftime("%Y-%m-%dT%H%M%SUTC"), suffix),
         pdf_filename = lambda: _DATA_SOURCE['name_fmt']('pdf') if _DATA_SOURCE['archive'] else "current_data.pdf",
         text_filename = lambda: _DATA_SOURCE['name_fmt']('txt') if _DATA_SOURCE['archive'] else "current_data.txt",
@@ -86,7 +87,7 @@ prod_config = dict(
     ),
     database=dict(
         active=True,
-        name='/Users/james/Dropbox/Work/CodeForSanJose/JailStats/dev/jailstats.db',
+        name='/data/jailstats.db',
     ),
     gspread=dict(
         active=True,
@@ -98,6 +99,28 @@ prod_config = dict(
     ),
 )
 
+# Non-Docker Local "Production" Config
+prod_local_config = dict(
+    logs = dict(
+        stdout = dict(
+            level = logging.DEBUG,
+        ),
+        file = dict(
+            level = logging.DEBUG,
+        ),
+        email=dict(
+            level=logging.ERROR,
+        ),
+    ),
+    database=dict(
+        name='/Users/james/Dropbox/Work/CodeForSanJose/JailStats/dev/data/jailstats.db',
+    ),
+    gspread=dict(
+        name="SCC Daily Jail Stats - Test",
+    ),
+)
+
+# Test Config
 test_config = dict(
     logs = dict(
         stdout = dict(
@@ -111,7 +134,7 @@ test_config = dict(
         ),
     ),
     database=dict(
-        name='/Users/james/Dropbox/Work/CodeForSanJose/JailStats/dev/jailstats_test.db',
+        name='/Users/james/Dropbox/Work/CodeForSanJose/JailStats/dev/data/jailstats_test.db',
     ),
     gspread=dict(
         name="SCC Daily Jail Stats - Test",
@@ -128,6 +151,8 @@ def build(env):
         config = dict()
         if env == 'test':
             override_config(prod_config, test_config, config)
+        elif env == 'ptest':
+            override_config(prod_config, prod_local_config, config)
     return config
 
 
@@ -202,7 +227,7 @@ def run_checks():
         print("-------- Overrides -------------------")
         show(_DATABASE['active'], _DATABASE['name'])
         show(_GSPREAD['active'], _GSPREAD['name'])
-        show(_LOGS['stdout']['level'],_LOGS['file']['level'], _LOGS['email']['level'])
+        show(_LOGS['stdout']['level'], _LOGS['file']['level'], _LOGS['email']['level'])
 
     env = 'test'
     scheduler, data_source, database, logs, gspread = config_init(env)

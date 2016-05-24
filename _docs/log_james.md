@@ -5,7 +5,12 @@
 
 ### 2016.05.21 - Sat
 
-* Finished clean up of the Config system.  Config now uses a base (the production environment), but individual settings can be overridden in the test_config dictionary.
+* Cleaned up of the Config system.  Config now uses a base (the production environment), but individual settings can be overridden in the test_config dictionary.
+* Saved to GIT.
+* Removed .gitignore file from repo.
+* Saved to GIT.
+* Stopped tracking .gitignore.
+* Saved to GIT.
 
 ### 2016.05.20 - Fri
 
