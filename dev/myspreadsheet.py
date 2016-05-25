@@ -14,7 +14,7 @@ from show import show
 show.set(where=True)
 show.set(fmtfunc=pformat)
 show.prettyprint()
-show.set(show=True)
+show.set(show=False)
 
 def str_to_class(str):
     return getattr(sys.modules[__name__], str)
@@ -48,7 +48,7 @@ class Spreadsheet(object):
             LOGGER.warning("Data not written to the Spreadsheet - configured as inactive!")
             return
         for name, ws in self.ws.items():
-            LOGGER.debug("Writing '{}' to Spreadsheet".format(name))
+            LOGGER.info("Writing '{}' to Spreadsheet".format(name))
             ws.save()
 
 

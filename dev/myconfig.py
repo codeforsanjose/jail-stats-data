@@ -12,7 +12,7 @@ from show import show
 show.set(where=True)
 show.set(fmtfunc=pformat)
 show.prettyprint()
-show.set(show=True)
+show.set(show=False)
 
 '''
 The configuration uses a base configuration (prod_config), and optional overrides.  The base config, "prod_config",
@@ -88,11 +88,11 @@ prod_config = dict(
         archive_text = lambda: os.path.join(_DATA_SOURCE['archive_path'], _DATA_SOURCE['text_filename']()),
     ),
     database=dict(
-        active=False,
+        active=True,
         name='../data/jailstats.db',
     ),
     gspread=dict(
-        active=False,
+        active=True,
         name="SCC Daily Jail Stats",
         credentials_file='/Users/james/Dropbox/Development/.keys/Google/CFSJ/CFSJ-JailStats-4898258d3468.json',
         worksheets=['Total', 'Men', 'Women'],
@@ -105,9 +105,10 @@ prod_config = dict(
 prod_local_config = dict(
     logs = dict(
         stdout = dict(
-            level = logging.DEBUG,
+            level = logging.INFO,
         ),
         file = dict(
+            active = True,
             level = logging.DEBUG,
         ),
         email=dict(
@@ -130,9 +131,10 @@ prod_local_config = dict(
 test_config = dict(
     logs = dict(
         stdout = dict(
-            level = logging.DEBUG,
+            level = logging.INFO,
         ),
         file = dict(
+            active = True,
             level = logging.DEBUG,
         ),
         email=dict(
@@ -141,15 +143,15 @@ test_config = dict(
     ),
     data_source = dict(
         archive_path = '../archive_test',
-        archive_clean_active = False,
+        archive_clean_active = True,
         archive_clean_days = 5,
     ),
     database=dict(
-        active=False,
+        active=True,
         name='/Users/james/Dropbox/Work/CodeForSanJose/JailStats/data/jailstats_test.db',
     ),
     gspread=dict(
-        active=False,
+        active=True,
         name="SCC Daily Jail Stats - Test",
     ),
 )
@@ -229,16 +231,16 @@ def show_config(title, scheduler, data_source, database, logs, gspread):
     print("                                      Environment: {}".format(title))
     print(
     "============================================================================================================")
-    show(scheduler)
-    show(data_source)
-    show(database)
-    show(logs)
-    show(gspread)
+    show(scheduler, show=True)
+    show(data_source, show=True)
+    show(database, show=True)
+    show(logs, show=True)
+    show(gspread, show=True)
     print("-------- Overrides -------------------")
-    show(_DATABASE['active'], _DATABASE['name'])
-    show(_DATA_SOURCE['archive_path'], _DATA_SOURCE['archive_clean_active'], _DATA_SOURCE['archive_clean_days'])
-    show(_GSPREAD['active'], _GSPREAD['name'])
-    show(_LOGS['stdout']['level'], _LOGS['file']['level'], _LOGS['email']['level'])
+    show(_DATABASE['active'], _DATABASE['name'], show=True)
+    show(_DATA_SOURCE['archive_path'], _DATA_SOURCE['archive_clean_active'], _DATA_SOURCE['archive_clean_days'], show=True)
+    show(_GSPREAD['active'], _GSPREAD['name'], show=True)
+    show(_LOGS['stdout']['level'], _LOGS['file']['level'], _LOGS['email']['level'], show=True)
     print(
     "============================================================================================================\n\n")
 

@@ -117,7 +117,7 @@ def capture():
                             target = _DATA_SOURCE['archive_pdf'](),
                             retries = _DATA_SOURCE['retries'],
                             retry_delay = _DATA_SOURCE['retry_delay'])()
-        show(localPDF, show=True)
+        LOGGER.info("Archived PDF to: {}".format(localPDF))
         stats = PDF(pdf_file = localPDF,
                     text_file = localText)()
     else:

@@ -14,7 +14,7 @@ from show import show
 show.set(where=True)
 show.set(fmtfunc=pformat)
 show.prettyprint()
-show.set(show=True)
+show.set(show=False)
 
 LOGGER = logging.getLogger('capture')
 exc_msg = 'PDF document parsing failed'
