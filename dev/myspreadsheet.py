@@ -14,7 +14,7 @@ from show import show
 show.set(where=True)
 show.set(fmtfunc=pformat)
 show.prettyprint()
-show.set(show=False)
+show.set(show=True)
 
 def str_to_class(str):
     return getattr(sys.modules[__name__], str)
@@ -23,6 +23,8 @@ def str_to_class(str):
 class Spreadsheet(object):
     def __init__(self, data: dict, active: bool, name: str, credentials_file: str, worksheets: list, mode: str,
                  insert_at: int = 0, debug: bool = False) -> object:
+        self.active = active
+        self.name = name
         scope = ['https://spreadsheets.google.com/feeds']
         credentials = ServiceAccountCredentials.from_json_keyfile_name(credentials_file, scope)
         gcred = gspread.authorize(credentials)
@@ -41,6 +43,9 @@ class Spreadsheet(object):
         return self.save()
 
     def save(self) -> None:
+        if not self.active:
+            LOGGER.warning("Data not written to the Spreadsheet - marked inactive!")
+            return
         for name, ws in self.ws.items():
             LOGGER.debug("Writing '{}' to Spreadsheet".format(name))
             ws.save()

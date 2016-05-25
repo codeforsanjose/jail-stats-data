@@ -76,9 +76,9 @@ prod_config = dict(
     data_source = dict(
         url = 'https://www.sccgov.org/doc/Doc_daily_pop.pdf',
         retries = 10,
-        retry_delay = 5,
+        retry_delay = 5,  # in seconds, doubled on each retry.
         archive = True,
-        archive_path = 'archive',
+        archive_path = '../archive',
         archive_clean_active = True,
         archive_clean_days = 21,
         name_fmt = lambda suffix: "daily_pop_stats_{}.{}".format(datetime.datetime.utcnow().strftime("%Y-%m-%dT%H%M%SUTC"), suffix),
@@ -88,11 +88,11 @@ prod_config = dict(
         archive_text = lambda: os.path.join(_DATA_SOURCE['archive_path'], _DATA_SOURCE['text_filename']()),
     ),
     database=dict(
-        active=True,
-        name='/data/jailstats.db',
+        active=False,
+        name='../data/jailstats.db',
     ),
     gspread=dict(
-        active=True,
+        active=False,
         name="SCC Daily Jail Stats",
         credentials_file='/Users/james/Dropbox/Development/.keys/Google/CFSJ/CFSJ-JailStats-4898258d3468.json',
         worksheets=['Total', 'Men', 'Women'],
@@ -130,26 +130,26 @@ prod_local_config = dict(
 test_config = dict(
     logs = dict(
         stdout = dict(
-            level = logging.INFO,
+            level = logging.DEBUG,
         ),
         file = dict(
-            level = logging.INFO,
+            level = logging.DEBUG,
         ),
         email=dict(
             level=logging.ERROR,
         ),
     ),
     data_source = dict(
-        archive_path = 'archive_test',
-        archive_clean_active = True,
+        archive_path = '../archive_test',
+        archive_clean_active = False,
         archive_clean_days = 5,
     ),
     database=dict(
-        active=True,
+        active=False,
         name='/Users/james/Dropbox/Work/CodeForSanJose/JailStats/data/jailstats_test.db',
     ),
     gspread=dict(
-        active=True,
+        active=False,
         name="SCC Daily Jail Stats - Test",
     ),
 )

@@ -21,6 +21,15 @@ From the _docker directory:
 	docker cp ../data/jailstats.db cfsj_js_data:usr/src/app/data
 	docker cp ../archive cfsj_js_data:/usr/src/app
 
+Check:
+	docker run -it --rm --name cfsj-js \
+		cfsj_js_cap_image /bin/sh
+		
+	docker run -it --rm --name cfsj-js \
+		--volumes-from cfsj_js_data \
+		cfsj_js_cap_image /bin/sh
+
+
 ### Code Container :
 
 From the _docker directory:

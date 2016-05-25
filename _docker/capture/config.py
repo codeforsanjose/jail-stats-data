@@ -78,7 +78,7 @@ prod_config = dict(
         retries = 10,
         retry_delay = 5,
         archive = True,
-        archive_path = 'archive',
+        archive_path = '../archive',
         archive_clean_active = True,
         archive_clean_days = 21,
         name_fmt = lambda suffix: "daily_pop_stats_{}.{}".format(datetime.datetime.utcnow().strftime("%Y-%m-%dT%H%M%SUTC"), suffix),
@@ -88,11 +88,11 @@ prod_config = dict(
         archive_text = lambda: os.path.join(_DATA_SOURCE['archive_path'], _DATA_SOURCE['text_filename']()),
     ),
     database=dict(
-        active=True,
-        name='/data/jailstats.db',
+        active=False,
+        name='../data/jailstats.db',
     ),
     gspread=dict(
-        active=True,
+        active=False,
         name="SCC Daily Jail Stats",
         credentials_file='/Users/james/Dropbox/Development/.keys/Google/CFSJ/CFSJ-JailStats-4898258d3468.json',
         worksheets=['Total', 'Men', 'Women'],

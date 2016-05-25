@@ -3,6 +3,14 @@
 
 ## Log
 
+### 2016.05.25 - Wed
+
+* Renamed files to "myxxx" to prevent any import confusion.
+* Created mydb.py, with class DB.  Contains all the database code.
+* In capture.py, moved all pdf download code into new class Download.
+	* Replaced urlretrieve with urlopen, as per [here](http://stackoverflow.com/questions/32763720/timeout-a-file-download-with-python-urllib).
+* Saved to GIT.
+
 ### 2016.05.24 - Tue
 
 * Added "env" positional variable to argparse.  Defaults to "prod".  The debug switch and the environment are now separate.

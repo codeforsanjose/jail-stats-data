@@ -6,7 +6,7 @@ import time
 import os
 import logging.handlers
 
-from config import get_config
+from myconfig import get_config
 
 from pprint import pprint, pformat
 from show import show

@@ -10,25 +10,6 @@ LOGGER = logging.getLogger('capture')
 exc_msg = 'PDF document parsing failed'
 
 
-def toint(x):
-    return int(x.replace(',', ''))
-
-
-def one_num(x):
-    m = re.match(".*?([\d,]+)$", x)
-    return toint(m.group(1))
-
-
-def line_is(line, value):
-    if line != value:
-        raise ValueError(exc_msg)
-
-
-def last_char_is(line, value):
-    if line[-1] != value:
-        raise ValueError(exc_msg)
-
-
 def parse_text_file(text):
     data = dict()
     exc_msg = 'PDF document parsing failed - line: {}'
@@ -138,3 +119,23 @@ def parse_text_file(text):
         data[c[1]] = one_num(doc[c[0]])
 
     return data
+
+
+
+def toint(x):
+    return int(x.replace(',', ''))
+
+
+def one_num(x):
+    m = re.match(".*?([\d,]+)$", x)
+    return toint(m.group(1))
+
+
+def line_is(line, value):
+    if line != value:
+        raise ValueError(exc_msg)
+
+
+def last_char_is(line, value):
+    if line[-1] != value:
+        raise ValueError(exc_msg)

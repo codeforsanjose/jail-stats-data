@@ -14,15 +14,17 @@ import argparse
 import logging
 import logging.handlers
 from urllib.request import urlretrieve
+import requests
 import sqlite3 as lite
 from PDFlib.TET import *
 from apscheduler.schedulers.background import BackgroundScheduler
 
-from config import config_init
-from parse_pdf import parse_text_file
-from spreadsheet import Spreadsheet
-import logsetup
-from archives import maintain_archive
+from myconfig import config_init
+from mypdf import parse_text_file
+from myspreadsheet import Spreadsheet
+import mylogsetup
+from myarchives import maintain_archive
+import mydb
 
 from pprint import pprint, pformat
 from show import show
@@ -40,26 +42,82 @@ LOGGER = logging.Logger('capture')
 
 exc_msg = lambda ex: "An exception of type {0} occured. Arguments:\n{1!r}".format(type(ex).__name__, ex.args)
 
-def download_pdf():
-    global _DATA_SOURCE
+class MyError(Exception):
+    def __init__(self, message):
+        self.message = message
+    def __str__(self):
+        return repr(self.message)
 
-    LOGGER.debug("Retrieving PDF...")
-    retries = _DATA_SOURCE['retries']
-    retry_delay = _DATA_SOURCE['retry_delay']
-    url = _DATA_SOURCE['url']
-    localfile = _DATA_SOURCE['archive_pdf']()
+class Download:
+    def __init__(self, url: str, target: str, retries: int, retry_delay: int, timeout: int = 3) -> object:
+        self.url = url
+        self.target = target
+        self.retries = retries
+        self.retry_delay = retry_delay
+        self.timeout = timeout
+        self.check_target(self.target)
 
-    for n in range(retries):
-        try:
-            urlretrieve(url, localfile)
-            LOGGER.debug("PDF saved as: {}".format(localfile))
-            return localfile
-        except:
-            if n == (retries-1):
-                print_exc()
-            LOGGER.warning("Retrieve failed!  Retrying in: {} seconds...".format(retry_delay))
-            time.sleep(retry_delay)
-            retry_delay *= 2
+    def __call__(self):
+        return self.fetch()
+
+    def check_target(self, target):
+        if not os.access(os.path.dirname(target), os.W_OK):
+            msg = "Invalid download target (invalid path or write privileges missing): {}".format(self.target)
+            LOGGER.error(msg)
+            raise MyError(msg)
+
+    def fetch(self):
+        global _DATA_SOURCE
+
+        LOGGER.debug("Dowloading: {} --> {}".format(self.url, self.target))
+        for n in range(self.retries):
+            try:
+                show(self.url, self.target)
+                request = requests.get(self.url, timeout=self.timeout, stream=True)
+                with open(self.target, 'wb') as fh:
+                    for chunk in request.iter_content(1024 * 1024):
+                        fh.write(chunk)
+                LOGGER.debug("File saved as: {}".format(self.target))
+                return self.target
+            except FileNotFoundError as e:
+                LOGGER.exception("Invalid download target: {}".format(self.target))
+                raise
+            except ConnectionResetError:
+                if n <= (self.retries - 1):
+                    LOGGER.warning("Download connection failed!  Retrying in: {} seconds...".format(self.retry_delay))
+                else:
+                    LOGGER.exception("Download failed!")
+                    raise
+                time.sleep(self.retry_delay)
+                self.retry_delay *= 2
+            except:
+                LOGGER.exception("Download failed.")
+                raise
+
+    def fetch2(self):
+        global _DATA_SOURCE
+
+        LOGGER.debug("Dowloading: {} --> {}".format(self.url, self.target))
+        for n in range(self.retries):
+            try:
+                show(self.url, self.target)
+                urlretrieve(self.url, self.target)
+                LOGGER.debug("File saved as: {}".format(self.target))
+                return self.target
+            except FileNotFoundError as e:
+                LOGGER.exception("Invalid download target: {}".format(self.target))
+                raise
+            except ConnectionResetError:
+                if n <= (self.retries-1):
+                    LOGGER.warning("Download connection failed!  Retrying in: {} seconds...".format(self.retry_delay))
+                else:
+                    LOGGER.exception("Download failed!")
+                    raise
+                time.sleep(self.retry_delay)
+                self.retry_delay *= 2
+            except:
+                LOGGER.exception("Download failed.")
+                raise
 
 
 def pdf_to_text(in_file, outFile):
@@ -124,90 +182,13 @@ def pdf_to_text(in_file, outFile):
         tet.delete()
         return data
 
-def save_to_db(stats):
-    con = None
-    try:
-        db_name = _DATABASE['name']
-        LOGGER.debug("Saving data to database: {}".format(db_name))
-        con = lite.connect(db_name)
-        with con:
-            con.execute("INSERT INTO daily VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-                        [stats['Year'],
-                        stats['Month'],
-                        stats['Day'],
-                        stats['Hour'],
-                        stats['Minute'],
-                        stats['DayOfWeek'],
-                        stats['AsOfDate'],
-                        stats['Total'],
-                        stats['AvgStay'],
-                        stats['Men'],
-                        stats['MenFlnySent'],
-                        stats['MenFlnySentStay'],
-                        stats['MenMisdSent'],
-                        stats['MenMisdSentStay'],
-
-                        stats['MenFlnyUnsent'],
-                        stats['MenFlnyUnsentStay'],
-                        stats['MenMisdUnsent'],
-                        stats['MenMisdUnsentStay'],
-
-                        stats['Wmn'],
-
-                        stats['WmnFlnySent'],
-                        stats['WmnFlnySentStay'],
-                        stats['WmnMisdSent'],
-                        stats['WmnMisdSentStay'],
-
-                        stats['WmnFlnyUnsent'],
-                        stats['WmnFlnyUnsentStay'],
-                        stats['WmnMisdUnsent'],
-                        stats['WmnMisdUnsentStay'],
-
-                        stats['Age18Less'],
-                        stats['Age18_24'],
-                        stats['Age25_34'],
-                        stats['Age35_44'],
-                        stats['Age45_54'],
-                        stats['Age55Plus']]
-                        )
-            LOGGER.info("Saved to database...")
-
-    except lite.IntegrityError:
-        LOGGER.warning("The data is already in the database!")
-
-    except Exception as e:
-        LOGGER.exception("save_to_db() failed:")
-
 
 def save_all_to_gs():
-    column_names = ['Year', 'Month', 'Day', 'Hour', 'Minute', 'DayOfWeek', 'AsOfDate', 'Total', 'AvgStay', 'Men', 'MenFlnySent',
-               'MenFlnySentStay', 'MenMisdSent', 'MenMisdSentStay', 'MenFlnyUnsent', 'MenFlnyUnsentStay',
-               'MenMisdUnsent', 'MenMisdUnsentStay', 'Wmn', 'WmnFlnySent', 'WmnFlnySentStay', 'WmnMisdSent',
-               'WmnMisdSentStay', 'WmnFlnyUnsent', 'WmnFlnyUnsentStay', 'WmnMisdUnsent', 'WmnMisdUnsentStay',
-               'Age18Less', 'Age18_24', 'Age25_34', 'Age35_44', 'Age45_54', 'Age55Plus']
-    con = None
-    all_rows = []
-    try:
-        db_name = _DATABASE['name']
-        LOGGER.debug("Saving data to database: {}".format(db_name))
-        con = lite.connect(db_name)
-        cur = con.cursor()
-        with con:
-            cur.execute('SELECT * FROM daily ORDER BY AsOfDate ASC')
-            all_rows = cur.fetchall()
+    global _database
 
-    except Exception as e:
-        LOGGER.exception("Unable to retrieve data from the database.")
-
-    for row in all_rows:
-        data = dict(zip(column_names, row))
-        save_row_to_gs(data)
-
-
-def save_row_to_gs(stats):
-    global _GSPREAD
-    Spreadsheet(data = stats, **_GSPREAD)()
+    for row in _database.fetchall():
+        stats = dict(zip(_database.column_names, row))
+        Spreadsheet(data=stats, **_GSPREAD)()
 
 
 def signal_handler(signal, frame):
@@ -216,33 +197,35 @@ def signal_handler(signal, frame):
 
 
 def capture():
-    global _DATA_SOURCE, _DATABASE, _GSPREAD
+    global _DATA_SOURCE, _database, _GSPREAD
 
     localText = _DATA_SOURCE['archive_text']()
     if _OPTIONS.in_file is None:
-        localPDF = download_pdf()
+        localPDF = Download(url = _DATA_SOURCE['url'],
+                            target = _DATA_SOURCE['archive_pdf'](),
+                            retries = _DATA_SOURCE['retries'],
+                            retry_delay = _DATA_SOURCE['retry_delay'])()
+        show(localPDF, show=True)
         stats = pdf_to_text(localPDF, localText)
     else:
         stats = pdf_to_text(_OPTIONS.in_file, localText)
     LOGGER.debug("Saving text file to: {}".format(localText))
     LOGGER.debug("Stats data: {}".format(pformat(stats)))
 
-    if _DATABASE['active']:
-        save_to_db(stats)
-    else:
-        LOGGER.info("Data not saved to the Database - marked inactive!")
+    # Save to database
+    _database.save(stats)
 
-    if _GSPREAD['active']:
-        save_row_to_gs(stats)
-    else:
-        LOGGER.info("Data not written to the Spreadsheet - marked inactive!")
+    # Write to spreadsheet
+    Spreadsheet(data=stats, **_GSPREAD)()
 
+    # Cleanup the archive
     maintain_archive()
 
 
 def main():
     global _OPTIONS, sched, SYS_SHUTDOWN, LOGGER
-    global _SCHEDULER, _DATA_SOURCE, _DATABASE, _LOGS, _GSPREAD
+    global _SCHEDULER, _DATA_SOURCE, _LOGS, _GSPREAD
+    global _database
 
     parser = argparse.ArgumentParser(
         description='This program queries the current Santa Clara Country Sheriff Daily Jail Population Statistics, pushes the data into the "jailstats" SQLite DB, and uploads the data to the Google Spreadsheet.')
@@ -266,11 +249,13 @@ def main():
     show(_DATABASE['name'], _GSPREAD['name'])
 
     # Setup logging
-    logsetup.configure_log('capture')
-    logsetup.configure_log('apscheduler')
+    mylogsetup.configure_log('capture')
+    mylogsetup.configure_log('apscheduler')
     LOGGER = logging.getLogger('capture')
 
     LOGGER.debug("Options: %s", pformat(_OPTIONS))
+
+    _database = mydb.DB(**_DATABASE)
 
     # Save to DB
     if _OPTIONS.save_to_db:
