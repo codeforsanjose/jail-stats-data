@@ -28,7 +28,7 @@ class DB:
 
     def save(self, data: dict) -> None:
         if not self.active:
-            LOGGER.warning("Data not saved to the Database - marked inactive!")
+            LOGGER.warning("Data not saved to the Database - configured as inactive!")
             return
 
         conn = None

@@ -20,7 +20,7 @@ from PDFlib.TET import *
 from apscheduler.schedulers.background import BackgroundScheduler
 
 from myconfig import config_init
-from mypdf import parse_text_file
+from mypdf import PDF
 from myspreadsheet import Spreadsheet
 import mylogsetup
 from myarchives import maintain_archive
@@ -94,94 +94,6 @@ class Download:
                 LOGGER.exception("Download failed.")
                 raise
 
-    def fetch2(self):
-        global _DATA_SOURCE
-
-        LOGGER.debug("Dowloading: {} --> {}".format(self.url, self.target))
-        for n in range(self.retries):
-            try:
-                show(self.url, self.target)
-                urlretrieve(self.url, self.target)
-                LOGGER.debug("File saved as: {}".format(self.target))
-                return self.target
-            except FileNotFoundError as e:
-                LOGGER.exception("Invalid download target: {}".format(self.target))
-                raise
-            except ConnectionResetError:
-                if n <= (self.retries-1):
-                    LOGGER.warning("Download connection failed!  Retrying in: {} seconds...".format(self.retry_delay))
-                else:
-                    LOGGER.exception("Download failed!")
-                    raise
-                time.sleep(self.retry_delay)
-                self.retry_delay *= 2
-            except:
-                LOGGER.exception("Download failed.")
-                raise
-
-
-def pdf_to_text(in_file, outFile):
-    separator = "\n"
-
-    try:
-        try:
-
-            tet = TET()
-
-            if (sys.version_info[0] < 3):
-                raise Exception("Must be run under Python3!")
-
-            with open(outFile, 'w', 2, 'utf-8') as fp:
-
-                docoptlist = ""
-                doc = tet.open_document(in_file, docoptlist)
-
-                if (doc == -1):
-                    raise Exception("Error " + repr(tet.get_errnum()) + "in "
-                                    + tet.get_apiname() + "(): " + tet.get_errmsg())
-
-                n_pages = int(tet.pcos_get_number(doc, "length:pages"))
-                for pageno in range(1, n_pages + 1):
-
-                    pageoptlist = "granularity=page"
-                    page = tet.open_page(doc, pageno, pageoptlist)
-
-                    if (page == -1):
-                        LOGGER.error("Error " + repr(tet.get_errnum()) + "in "
-                              + tet.get_apiname() + "(): " + tet.get_errmsg())
-                        continue  # try next page */
-
-                    text = tet.get_text(page)
-                    while (text != None):
-                        data = parse_text_file(text)
-                        text += "\n\n"
-                        text += pformat(data)
-                        fp.write(text)
-                        fp.write(separator)
-                        text = tet.get_text(page)
-
-                    if (tet.get_errnum() != 0):
-                        LOGGER.error ("\nError " + repr(tet.get_errnum())
-                               + "in " + tet.get_apiname() + "() on page " +
-                               repr(pageno) + ": " + tet.get_errmsg() + "\n")
-
-                    tet.close_page(page)
-
-                tet.close_document(doc)
-
-        except TETException:
-            LOGGER.error("TET exception occurred:\n[%d] %s: %s" %
-                  ((tet.get_errnum()), tet.get_apiname(), tet.get_errmsg()))
-            print_tb(sys.exc_info()[2])
-
-        except Exception:
-            LOGGER.error("Exception occurred: %s" % (sys.exc_info()[0]))
-            print_exc()
-
-    finally:
-        tet.delete()
-        return data
-
 
 def save_all_to_gs():
     global _database
@@ -206,9 +118,11 @@ def capture():
                             retries = _DATA_SOURCE['retries'],
                             retry_delay = _DATA_SOURCE['retry_delay'])()
         show(localPDF, show=True)
-        stats = pdf_to_text(localPDF, localText)
+        stats = PDF(pdf_file = localPDF,
+                    text_file = localText)()
     else:
-        stats = pdf_to_text(_OPTIONS.in_file, localText)
+        stats = PDF(pdf_file = _OPTIONS.in_file,
+                    text_file = localText)()
     LOGGER.debug("Saving text file to: {}".format(localText))
     LOGGER.debug("Stats data: {}".format(pformat(stats)))
 
@@ -293,4 +207,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

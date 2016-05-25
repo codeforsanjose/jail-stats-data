@@ -10,6 +10,9 @@
 * In capture.py, moved all pdf download code into new class Download.
 	* Replaced urlretrieve with urlopen, as per [here](http://stackoverflow.com/questions/32763720/timeout-a-file-download-with-python-urllib).
 * Saved to GIT.
+* Moved all PDF handling to mypdf.py, in new class: PDF.
+* Saved to GIT.
+* 
 
 ### 2016.05.24 - Tue
 

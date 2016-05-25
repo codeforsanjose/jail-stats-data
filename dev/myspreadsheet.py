@@ -25,26 +25,27 @@ class Spreadsheet(object):
                  insert_at: int = 0, debug: bool = False) -> object:
         self.active = active
         self.name = name
-        scope = ['https://spreadsheets.google.com/feeds']
-        credentials = ServiceAccountCredentials.from_json_keyfile_name(credentials_file, scope)
-        gcred = gspread.authorize(credentials)
-        LOGGER.debug("Opening spreadsheet: {}".format(name))
-        self.sheet = gcred.open(name)
-        self.ws = dict()
-        for wname in worksheets:
-            LOGGER.debug("Opening worksheet '{}'".format(wname))
-            try:
-                ws = self.sheet.worksheet(wname)
-                self.ws[wname] = Worksheet(wname, ws, data, mode, insert_at)
-            except gspread.SpreadsheetNotFound:
-                LOGGER.error("Worksheet: {} not found!", wname)
+        if self.active:
+            scope = ['https://spreadsheets.google.com/feeds']
+            credentials = ServiceAccountCredentials.from_json_keyfile_name(credentials_file, scope)
+            gcred = gspread.authorize(credentials)
+            LOGGER.debug("Opening spreadsheet: {}".format(name))
+            self.sheet = gcred.open(name)
+            self.ws = dict()
+            for wname in worksheets:
+                LOGGER.debug("Opening worksheet '{}'".format(wname))
+                try:
+                    ws = self.sheet.worksheet(wname)
+                    self.ws[wname] = Worksheet(wname, ws, data, mode, insert_at)
+                except gspread.SpreadsheetNotFound:
+                    LOGGER.error("Worksheet: {} not found!", wname)
 
     def __call__(self):
         return self.save()
 
     def save(self) -> None:
         if not self.active:
-            LOGGER.warning("Data not written to the Spreadsheet - marked inactive!")
+            LOGGER.warning("Data not written to the Spreadsheet - configured as inactive!")
             return
         for name, ws in self.ws.items():
             LOGGER.debug("Writing '{}' to Spreadsheet".format(name))
