@@ -3,6 +3,11 @@
 
 ## Log
 
+### 2016.05.26 - Thu
+
+* Added filename filtering on archive and DB backup maintenance to prevent accidental deletion of files.
+* Saved to GIT.
+
 ### 2016.05.25 - Wed
 
 * Renamed files to "myxxx" to prevent any import confusion.

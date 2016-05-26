@@ -56,6 +56,7 @@ class Download:
         self.retry_delay = retry_delay
         self.timeout = timeout
         self.check_target(self.target)
+        show(self.__dict__)
 
     def __call__(self):
         return self.fetch()
@@ -72,17 +73,17 @@ class Download:
         LOGGER.debug("Dowloading: {} --> {}".format(self.url, self.target))
         for n in range(self.retries):
             try:
-                show(self.url, self.target)
+                show(self.url, self.target, n, self.retries)
                 request = requests.get(self.url, timeout=self.timeout, stream=True)
                 with open(self.target, 'wb') as fh:
                     for chunk in request.iter_content(1024 * 1024):
                         fh.write(chunk)
                 LOGGER.debug("File saved as: {}".format(self.target))
                 return self.target
-            except FileNotFoundError as e:
+            except FileNotFoundError:
                 LOGGER.exception("Invalid download target: {}".format(self.target))
                 raise
-            except ConnectionResetError:
+            except:
                 if n <= (self.retries - 1):
                     LOGGER.warning("Download connection failed!  Retrying in: {} seconds...".format(self.retry_delay))
                 else:
@@ -90,9 +91,6 @@ class Download:
                     raise
                 time.sleep(self.retry_delay)
                 self.retry_delay *= 2
-            except:
-                LOGGER.exception("Download failed.")
-                raise
 
 
 def save_all_to_gs():
@@ -128,6 +126,7 @@ def capture():
 
     # Save to database
     _database.save(stats)
+    _database.maintain()
 
     # Write to spreadsheet
     Spreadsheet(data=stats, **_GSPREAD)()

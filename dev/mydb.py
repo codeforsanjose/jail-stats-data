@@ -2,10 +2,15 @@
 # SQLite DB processes for JailStats
 
 import sqlite3 as lite
+import time
+import os
+import datetime
 import logging
+from subprocess import call
 
 from pprint import pformat
 from show import show
+from myarchives import clean_dir
 
 show.set(where=True)
 show.set(fmtfunc=pformat)
@@ -14,6 +19,10 @@ show.set(show=False)
 
 LOGGER = logging.getLogger('capture')
 
+filename_dated = lambda base, ext: "{}_{}.{}".format(base,
+                                                     datetime.datetime.utcnow().strftime("%Y-%m-%dT%H%M%SUTC"),
+                                                     ext)
+backup_ext = "bak"
 
 class DB:
     column_names = ['Year', 'Month', 'Day', 'Hour', 'Minute', 'DayOfWeek', 'AsOfDate', 'Total', 'AvgStay', 'Men',
@@ -22,9 +31,26 @@ class DB:
                     'WmnMisdSent', 'WmnMisdSentStay', 'WmnFlnyUnsent', 'WmnFlnyUnsentStay', 'WmnMisdUnsent',
                     'WmnMisdUnsentStay', 'Age18Less', 'Age18_24', 'Age25_34', 'Age35_44', 'Age45_54', 'Age55Plus']
 
-    def __init__(self, active=False, name=''):
+    def __init__(self, active: bool = False, name: str = '', backup_active: bool = False, backup_dir: str = '',
+                 backup_retain_days: int = 21) -> None:
         self.active = active
         self.name = name
+        self.backup_active = backup_active
+        self.backup_dir = backup_dir
+        self.backup_retain_days = backup_retain_days
+        self.build_paths()
+        show(self.__dict__, show=True)
+
+    def build_paths(self):
+        # Full path and filename for data
+        self.path, self.filename = os.path.split(os.path.abspath(self.name))
+
+        # BACKUP.
+        if not self.backup_dir[0] == '/':
+            self.backup_dir = os.path.split(os.path.join(self.path, self.backup_dir, "xxx"))[0]
+        # Does the backup directory exist?
+        if not os.path.exists(self.backup_dir):
+            os.mkdir(self.backup_dir)
 
     def save(self, data: dict) -> None:
         if not self.active:
@@ -107,3 +133,25 @@ class DB:
 
         conn.close()
         return all_rows
+
+    def maintain(self) -> None:
+        self.backup()
+        clean_dir(dir_path = self.backup_dir,
+                       days = self.backup_retain_days,
+                       prefixes = [os.path.splitext(self.filename)[0]],
+                       suffixes = [backup_ext])
+
+    def backup(self) -> None:
+        if not self.backup_active:
+            LOGGER.warning("Database maintenance note performed - DB configured as inactive!")
+            return
+
+        b_target = os.path.join(self.backup_dir, filename_dated(os.path.splitext(self.filename)[0], backup_ext))
+
+        # Run the backup command
+        command = "sqlite3 {} .dump > {}".format(self.name, b_target)
+        show(self.__dict__, b_target, command, show=True)
+        call(command, shell=True)
+        LOGGER.info("Database backed up to: {}".format(b_target))
+
+

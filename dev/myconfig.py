@@ -34,6 +34,9 @@ Message:
 %(message)s
 '''
 
+archive_file_prefix = 'daily_pop_stats_'
+archive_file_suffixes = ['.pdf', '.txt']
+
 # Docker Production Config
 prod_config = dict(
     scheduler = dict(
@@ -77,19 +80,25 @@ prod_config = dict(
         url = 'https://www.sccgov.org/doc/Doc_daily_pop.pdf',
         retries = 10,
         retry_delay = 5,  # in seconds, doubled on each retry.
-        archive = True,
-        archive_path = '../archive',
-        archive_clean_active = True,
-        archive_clean_days = 21,
-        name_fmt = lambda suffix: "daily_pop_stats_{}.{}".format(datetime.datetime.utcnow().strftime("%Y-%m-%dT%H%M%SUTC"), suffix),
+        name_fmt = lambda suffix: "{}{}.{}".format(archive_file_prefix, datetime.datetime.utcnow().strftime("%Y-%m-%dT%H%M%SUTC"), suffix),
         pdf_filename = lambda: _DATA_SOURCE['name_fmt']('pdf') if _DATA_SOURCE['archive'] else "current_data.pdf",
         text_filename = lambda: _DATA_SOURCE['name_fmt']('txt') if _DATA_SOURCE['archive'] else "current_data.txt",
+
+        archive=True,
+        archive_path='../archive',
+        archive_clean_active=True,
+        archive_retain_days=21,
+        archive_file_prefixes = [archive_file_prefix],
+        archive_file_suffixes = archive_file_suffixes,
         archive_pdf = lambda: os.path.join(_DATA_SOURCE['archive_path'], _DATA_SOURCE['pdf_filename']()),
         archive_text = lambda: os.path.join(_DATA_SOURCE['archive_path'], _DATA_SOURCE['text_filename']()),
     ),
     database=dict(
         active=True,
         name='../data/jailstats.db',
+        backup_active=False,
+        backup_dir= 'backup',
+        backup_retain_days = 21,
     ),
     gspread=dict(
         active=True,
@@ -117,10 +126,11 @@ prod_local_config = dict(
     ),
     data_source = dict(
         archive_clean_active = True,
-        archive_clean_days = 21,
+        archive_retain_days = 21,
     ),
     database=dict(
         name='/Users/james/Dropbox/Work/CodeForSanJose/JailStats/data/jailstats.db',
+        backup_active=False,
     ),
     gspread=dict(
         name="SCC Daily Jail Stats",
@@ -131,7 +141,7 @@ prod_local_config = dict(
 test_config = dict(
     logs = dict(
         stdout = dict(
-            level = logging.INFO,
+            level = logging.DEBUG,
         ),
         file = dict(
             active = True,
@@ -144,11 +154,13 @@ test_config = dict(
     data_source = dict(
         archive_path = '../archive_test',
         archive_clean_active = True,
-        archive_clean_days = 5,
+        archive_retain_days = 5,
     ),
     database=dict(
         active=True,
         name='/Users/james/Dropbox/Work/CodeForSanJose/JailStats/data/jailstats_test.db',
+        backup_active=True,
+        backup_retain_days=2,
     ),
     gspread=dict(
         active=True,
@@ -238,7 +250,7 @@ def show_config(title, scheduler, data_source, database, logs, gspread):
     show(gspread, show=True)
     print("-------- Overrides -------------------")
     show(_DATABASE['active'], _DATABASE['name'], show=True)
-    show(_DATA_SOURCE['archive_path'], _DATA_SOURCE['archive_clean_active'], _DATA_SOURCE['archive_clean_days'], show=True)
+    show(_DATA_SOURCE['archive_path'], _DATA_SOURCE['archive_clean_active'], _DATA_SOURCE['archive_retain_days'], show=True)
     show(_GSPREAD['active'], _GSPREAD['name'], show=True)
     show(_LOGS['stdout']['level'], _LOGS['file']['level'], _LOGS['email']['level'], show=True)
     print(

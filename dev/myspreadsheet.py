@@ -39,6 +39,8 @@ class Spreadsheet(object):
                     self.ws[wname] = Worksheet(wname, ws, data, mode, insert_at)
                 except gspread.SpreadsheetNotFound:
                     LOGGER.error("Worksheet: {} not found!", wname)
+        show(self.__dict__, show=True)
+
 
     def __call__(self):
         return self.save()
