@@ -37,6 +37,7 @@ Message:
 archive_file_prefix = 'daily_pop_stats_'
 archive_file_suffixes = ['.pdf', '.txt']
 
+# BASE CONFIG
 # Docker Production Config
 prod_config = dict(
     scheduler = dict(
@@ -110,7 +111,11 @@ prod_config = dict(
     ),
 )
 
-# Non-Docker Local "Production" Config
+# OVERRIDE CONFIGS
+# The above Production configuration can be overridden as follows.  You only need to specify the *individual*
+# parameters you wish to override (see the "ChainMap" object in Python3 docs).
+
+# Non-Docker Local "Production" Config.
 prod_local_config = dict(
     logs = dict(
         stdout = dict(
