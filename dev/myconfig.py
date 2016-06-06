@@ -97,7 +97,7 @@ prod_config = dict(
     database=dict(
         active=True,
         name='../data/jailstats.db',
-        backup_active=False,
+        backup_active=True,
         backup_dir= 'backup',
         backup_retain_days = 21,
     ),
@@ -129,16 +129,8 @@ prod_local_config = dict(
             level=logging.ERROR,
         ),
     ),
-    data_source = dict(
-        archive_clean_active = True,
-        archive_retain_days = 21,
-    ),
     database=dict(
         name='/Users/james/Dropbox/Work/CodeForSanJose/JailStats/data/jailstats.db',
-        backup_active=False,
-    ),
-    gspread=dict(
-        name="SCC Daily Jail Stats",
     ),
 )
 
@@ -231,7 +223,8 @@ def config_init(env='prod'):
     _GSPREAD = MappingProxyType(config['gspread'])
 
     _config_built = True
-    show_config(env, _SCHEDULER, _DATA_SOURCE, _DATABASE, _LOGS, _GSPREAD)
+    if env == 'test':
+        show_config(env, _SCHEDULER, _DATA_SOURCE, _DATABASE, _LOGS, _GSPREAD)
     return _SCHEDULER, _DATA_SOURCE, _DATABASE, _LOGS, _GSPREAD
 
 

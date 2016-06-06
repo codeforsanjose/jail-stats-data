@@ -3,6 +3,11 @@
 
 ## Log
 
+### 2016.06.06 - Mon
+
+* Uploaded the files for the last 3 days.  Had a power failure while on vacation, so we missed a few days.
+* Modified the command line options: removed the "-i" option (for immediate), and replaced with a "-m" run-mode option, which defaults to "immediate".  To run in scheduled mode, must have "-m scheduled" in the command line.
+
 ### 2016.05.26 - Thu
 
 * Added filename filtering on archive and DB backup maintenance to prevent accidental deletion of files.

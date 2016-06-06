@@ -111,6 +111,7 @@ def capture():
 
     localText = _DATA_SOURCE['archive_text']()
     if _OPTIONS.in_file is None:
+        LOGGER.debug("Downloading file at: {}".format(_DATA_SOURCE['url']))
         localPDF = Download(url = _DATA_SOURCE['url'],
                             target = _DATA_SOURCE['archive_pdf'](),
                             retries = _DATA_SOURCE['retries'],
@@ -119,6 +120,7 @@ def capture():
         stats = PDF(pdf_file = localPDF,
                     text_file = localText)()
     else:
+        LOGGER.debug("Processing file at: ")
         stats = PDF(pdf_file = _OPTIONS.in_file,
                     text_file = localText)()
     LOGGER.debug("Saving text file to: {}".format(localText))
@@ -144,17 +146,20 @@ def main():
         description='This program queries the current Santa Clara Country Sheriff Daily Jail Population Statistics, pushes the data into the "jailstats" SQLite DB, and uploads the data to the Google Spreadsheet.')
     parser.add_argument("-d", "--debug", default=False, dest="debug", action="store_true",
                         help="Run in test mode, with debug logging.")
-    parser.add_argument("-i", "--immediate", default=False, dest="immediate", action="store_true",
-                        help="Run capture once and exit.")
+    parser.add_argument("-m", "--mode", default="immediate", dest="mode", type=str,
+                        help="Must be either \"scheduled\" or \"immediate\".  The default is \"immediate\".")
     parser.add_argument("-f", "--file", dest="in_file", type=str,
-                        help="Use the specified local PDF file as input.")
+                        help="Specifies a local PDF file as input.")
     parser.add_argument("-s", "--save", default=False, dest="save_to_db", action="store_true",
-                        help="Write ALL data in the database to the Google spreadsheet.")
+                        help="Upload ALL data in the database to the Google spreadsheet.  NOTE: the spreadsheet is NOT cleared, so this may cause duplicates!")
     parser.add_argument("env", action="store", type=str, choices=['test', 'prod', 'ptest'],
                         help="The run environment - must be one of the following: test, prod or ptest.")
     _OPTIONS = parser.parse_args()
     show.set(show=_OPTIONS.debug)
     show(_OPTIONS)
+    if _OPTIONS.mode == False and _OPTIONS.in_file is not None:
+        LOGGER.fatal("You cannot run the app in scheduled mode and specify an input file.  If an input file is specified, the app must be run in IMMEDIATE mode.")
+        sys.exit(-1)
 
     # Load config
     _SCHEDULER, _DATA_SOURCE, _DATABASE, _LOGS, _GSPREAD = config_init(_OPTIONS.env)
@@ -176,11 +181,11 @@ def main():
         save_all_to_gs()
 
     # Run once!
-    elif _OPTIONS.immediate:
+    elif _OPTIONS.mode == 'immediate':
         capture()
 
     # Run the scheduler.
-    else:
+    elif _OPTIONS.mode == 'scheduled':
         signal.signal(signal.SIGINT, signal_handler)
 
         sched.configure(logger=LOGGER, job_defaults=dict(coalesce=True, misfire_grace_time=1, max_instances=1),

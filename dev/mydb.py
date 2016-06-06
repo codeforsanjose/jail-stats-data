@@ -39,7 +39,7 @@ class DB:
         self.backup_dir = backup_dir
         self.backup_retain_days = backup_retain_days
         self.build_paths()
-        show(self.__dict__, show=True)
+        show(self.__dict__)
 
     def build_paths(self):
         # Full path and filename for data
@@ -150,7 +150,7 @@ class DB:
 
         # Run the backup command
         command = "sqlite3 {} .dump > {}".format(self.name, b_target)
-        show(self.__dict__, b_target, command, show=True)
+        # show(self.__dict__, b_target, command, show=True)
         call(command, shell=True)
         LOGGER.info("Database backed up to: {}".format(b_target))
 
