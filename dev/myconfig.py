@@ -66,7 +66,7 @@ prod_config = dict(
             level=logging.ERROR,
             format=email_fmt1,
             datefmt=None,
-            credentials_file='../_private/cfsj_monitor_gmail.json',
+            credentials_file='../__database/email.json',
             handler = dict(
                 mailhost=('smtp.gmail.com', 587),
                 fromaddr='cfsj.monitor@gmail.com',
@@ -96,7 +96,7 @@ prod_config = dict(
     ),
     database=dict(
         active=True,
-        name='../data/jailstats.db',
+        name='../__database/jailstats.db',
         backup_active=True,
         backup_dir= 'backup',
         backup_retain_days = 21,
@@ -104,7 +104,7 @@ prod_config = dict(
     gspread=dict(
         active=True,
         name="SCC Daily Jail Stats",
-        credentials_file='/Users/james/Dropbox/Development/.keys/Google/CFSJ/CFSJ-JailStats-4898258d3468.json',
+        credentials_file='../__database/gspread.json',
         worksheets=['Total', 'Men', 'Women'],
         mode='insert',
         insert_at=4,
@@ -126,11 +126,15 @@ prod_local_config = dict(
             level = logging.DEBUG,
         ),
         email=dict(
+            credentials_file='../_private/cfsj_monitor_gmail.json',
             level=logging.ERROR,
         ),
     ),
     database=dict(
         name='/Users/james/Dropbox/Work/CodeForSanJose/JailStats/data/jailstats.db',
+    ),
+    gspread=dict(
+        credentials_file='/Users/james/Dropbox/Development/.keys/Google/CFSJ/CFSJ-JailStats-4898258d3468.json',
     ),
 )
 
@@ -145,6 +149,7 @@ test_config = dict(
             level = logging.DEBUG,
         ),
         email=dict(
+            credentials_file='../_private/cfsj_monitor_gmail.json',
             level=logging.ERROR,
         ),
     ),
@@ -162,6 +167,7 @@ test_config = dict(
     gspread=dict(
         active=True,
         name="SCC Daily Jail Stats - Test",
+        credentials_file='/Users/james/Dropbox/Development/.keys/Google/CFSJ/CFSJ-JailStats-4898258d3468.json',
     ),
 )
 

@@ -3,6 +3,18 @@
 
 ## Log
 
+### 2016.06.09 - Thu
+
+* Working out Docker configuration
+
+### 2016.06.08 - Wed
+
+* Working out Docker configuration
+
+### 2016.06.07 - Tue
+
+* Working out Docker configuration
+
 ### 2016.06.06 - Mon
 
 * Uploaded the files for the last 3 days.  Had a power failure while on vacation, so we missed a few days.

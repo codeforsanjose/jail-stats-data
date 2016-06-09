@@ -146,7 +146,7 @@ def main():
         description='This program queries the current Santa Clara Country Sheriff Daily Jail Population Statistics, pushes the data into the "jailstats" SQLite DB, and uploads the data to the Google Spreadsheet.')
     parser.add_argument("-d", "--debug", default=False, dest="debug", action="store_true",
                         help="Run in test mode, with debug logging.")
-    parser.add_argument("-m", "--mode", default="immediate", dest="mode", type=str,
+    parser.add_argument("-m", "--mode", default="immediate", dest="mode", type=str, choices=['immediate', 'scheduled'],
                         help="Must be either \"scheduled\" or \"immediate\".  The default is \"immediate\".")
     parser.add_argument("-f", "--file", dest="in_file", type=str,
                         help="Specifies a local PDF file as input.")
