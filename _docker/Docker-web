@@ -1,6 +1,6 @@
 # JailStats Data
 
-FROM cfsj_js_base
+FROM cfsj_js_capture
 MAINTAINER JamesHaskell
 
 WORKDIR /

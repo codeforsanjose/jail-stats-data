@@ -3,6 +3,11 @@
 
 ## Log
 
+### 2016.06.24 - Fri
+
+* The Sheriff change the PDF format - added a new format.
+* Docker in progress.
+
 ### 2016.06.09 - Thu
 
 * Working out Docker configuration

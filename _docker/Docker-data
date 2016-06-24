@@ -1,0 +1,10 @@
+# JailStats - Data
+
+FROM alpine:3.3
+MAINTAINER JamesHaskell
+
+COPY /data/jailstats.db /__data/
+COPY /data/*.json /__data/
+
+RUN mkdir -p /__data/backup
+RUN mkdir /__data/archives

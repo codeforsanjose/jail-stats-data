@@ -7,12 +7,29 @@ Two images are required:
 
 ## The Plan
 
-1. Create the Base docker container. 
-2. Create the Data container.  This is the Base container, with an extra "data" directory containing subdirectories for the database and backups, and for the PDF and conversion archives.
-3. Run the App:
-	* Upload and run the Data container (it runs and exits).
-	* Upload the Base container, and start crond.
-	* Upload the Web container, and run it.
+As per current best Docker practices, use a named volume instead of the "data container pattern" for persisting our database, archives, etc.
+
+1. Create the Base docker container with the Data.  
+
+	|Item|Docker Directory|
+	|-----|--------|
+	|Capture code|`/_capture`|
+	|REST Web site|`/_web`|
+	|Database and credentials (persisted data)|`/__data`|
+
+2. Create the Named Volume:  
+	`docker volume create --name cfsj_js_data`
+3. Load the initial data into the Named Volume:
+	* Run the Base container with `-v cfsj_js_data:/_capture`.  _This will persist the data into the Named Volume._
+4. Test locally.  
+	* Update the database (creating the "test" Base image).
+	* Run the Test container, mounting the `cfsj_js_data` container, and verify that it is up to date.
+5. Test on AWS.  
+	* Push the "test" Base image to Dockerhub.
+	* Pull it down to Amazon.
+	* Create the named volume.
+	* Run the test Base image, with the named volume.
+	* Check the DB.
 
 ## Work
 
@@ -27,7 +44,7 @@ Run from `/Users/james/Dropbox/Work/CodeForSanJose/JailStats`.
 |Task|Command|
 |----|---|
 |Rebuild the Base container|`make`|
-|Run the Base container|`docker run -it cfsj_js_cap_image /bin/sh`|
+|Run the Base container|`docker run -it --rm -v cfsj_js_data:/__data cfsj_js_capture /bin/sh`|
 |Run cron in the Base container|`crond -d 6 -f`|
 
 

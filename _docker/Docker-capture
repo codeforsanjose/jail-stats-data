@@ -1,0 +1,34 @@
+# JailStats Update Program
+
+FROM prolocutor/docker-python-sqlite:3.12
+MAINTAINER JamesHaskell
+
+# -------- Base --------
+# Capture
+COPY /capture/*.py /_capture/
+COPY /capture/*.sh /_capture/
+COPY /capture/requirements.txt /_capture/
+
+COPY /capture/test/test.py /_capture/test/
+
+# Cron
+COPY /capture/cron/root /var/spool/cron/crontabs/root
+RUN chmod +x /_capture/*.sh
+
+
+# -------- Data --------
+COPY /data/jailstats.db /__data/
+COPY /data/*.json /__data/
+RUN mkdir -p /__data/backup
+RUN mkdir /__data/archives
+
+
+# -------- Web --------
+COPY /web/*.py /_web/
+COPY /web/*.sh /_web/
+RUN chmod +x /_web/*.sh
+
+RUN pip install -r /_capture/requirements.txt
+
+# The following will run cron, with cron log output directed to stderr.
+CMD ["crond","-d", "6", "-f"]
