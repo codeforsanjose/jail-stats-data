@@ -3,6 +3,10 @@
 
 ## Log
 
+### 2016.08.31 - Wed
+
+* Added another PDF parsing format... someone made another slight change to the published PDF format.
+
 ### 2016.06.24 - Fri
 
 * The Sheriff change the PDF format - added a new format.

@@ -21,7 +21,7 @@ LOGGER = logging.getLogger('capture')
 exc_msg = 'PDF document parsing failed'
 
 
-class PDF:
+class PDF(object):
     fmt_check = [[(0, "Office of the Sheriff"),
                   (1, "Department of Correction"),
                   (10, "#"),
@@ -29,13 +29,22 @@ class PDF:
                   (13, "Length of Stay"),
                   (24, "days"),
                   (37, "Age Profile")],
+
                  [(0, "Office of the Sheriff"),
                   (1, "Department of Correction"),
                   (2, "Daily Jail Population Statistics"),
                   (3, "Laurie Smith, Sheriff"),
                   (10, "Length of Stay"),
                   (11, "Length of Stay"),
-                  (26, "Age Profile")]]
+                  (26, "Age Profile")],
+
+                 [(0, "Office of the Sheriff"),
+                  (1, "Department of Correction"),
+                  (9, "#"),
+                  (11, "Length of Stay #"),
+                  (12, "Length of Stay"),
+                  (23, "days"),
+                  (36, "Age Profile")]]
 
     def __init__(self, pdf_file: str, text_file: str) -> object:
         self.pdf_file = pdf_file
@@ -54,6 +63,8 @@ class PDF:
             self.parse_fmt0()
         elif fmt == 1:
             self.parse_fmt1()
+        elif fmt == 2:
+            self.parse_fmt2()
         else:
             return None
         return self.data
@@ -122,14 +133,16 @@ class PDF:
 
     def determine_format(self) -> int:
         doc = self.text.split('\n')
+
         def test_fmt(check: list) -> bool:
             for c in check:
-                print("Checking line: {} is '{}' should be '{}'".format(c[0], doc[c[0]], c[1]))
+                LOGGER.debug("Checking line: {} is '{}' should be '{}'".format(c[0], doc[c[0]], c[1]))
                 if doc[c[0]] != c[1]:
                     return False
             return True
 
         for fmt, check in enumerate(self.fmt_check):
+            LOGGER.debug("CHECKING fmt: {}".format(fmt))
             if test_fmt(check):
                 self.fmt = fmt
                 return fmt
@@ -268,7 +281,7 @@ class PDF:
         d['MenMisdSent'] = toint(re.match("Misd. Sentenced: ([\d,]+)", lines[8]).group(1))
         d['MenMisdSentStay'] = one_num(lines[13])
         d['WmnMisdSent'] = one_num(lines[15])
-        d['WmnMisdSentStay'] =  one_num(lines[17])
+        d['WmnMisdSentStay'] = one_num(lines[17])
 
         d['MenFlnyUnsent'] = toint(re.match("Felony Unsentenced: ([\d,]+)", lines[18]).group(1))
         d['MenFlnyUnsentStay'] = one_num(lines[20])
@@ -280,7 +293,6 @@ class PDF:
         d['WmnMisdUnsent'] = one_num(lines[23])
         d['WmnMisdUnsentStay'] = one_num(lines[25])
 
-
         d['Age18Less'] = toint(re.match("\<18: ([\d,]+)", lines[27]).group(1))
         d['Age18_24'] = toint(re.match("18-24: ([\d,]+)", lines[28]).group(1))
         d['Age25_34'] = toint(re.match("25-34: ([\d,]+)", lines[29]).group(1))
@@ -290,6 +302,99 @@ class PDF:
 
         show(d)
 
+    def parse_fmt2(self):
+        LOGGER.debug("Parsing PDF document - format 0")
+        self.data = dict()
+        exc_msg = 'PDF document parsing failed - line: {}'
+
+        doc = self.text.split('\n')
+        d = self.data
+
+        # for i, t in enumerate(doc):
+        #     LOGGER.debug("line {:2d}: {}".format(i, t))
+
+        # Lines ending with "%"
+        for ln in [13, 14, 19, 20, 26, 27, 32, 33, 44, 45, 46, 47, 48]:
+            # print("Line: {}  char: {}".format(ln, doc[ln][-1]))
+            if doc[ln][-1] != "%":
+                raise ValueError(exc_msg.format(ln))
+
+        # ---------- Parse the Data -----------------
+        # Date & time
+        def l06(line):
+            def p(x):
+                if x is None:
+                    return 0
+                return int(x)
+
+            m = re.match \
+                    (
+                    "At (1[012]|[1-9]):?([0-5][0-9])?(?:\s)?(?i)(am|pm) on: (0?[1-9]|1[012])[- /.](0?[1-9]|[12][0-9]|3[01])[- /.]((?:19|20)\d\d) +Total Pop: ([\d,]+).*Stay: (\d+)",
+                    line)
+            hour = p(m.group(1))
+            if m.group(3).lower() == 'pm':
+                hour += 12
+            minute = p(m.group(2))
+            month = p(m.group(4))
+            day = p(m.group(5))
+            year = p(m.group(6))
+            LOGGER.info("Document date: {}/{}/{}  time: {}:{:02d}".format(month, day, year, hour, minute))
+            d['at'] = pytz.timezone('US/Pacific').localize \
+                (datetime.datetime(year=year, month=month, day=day, hour=hour, minute=minute))
+            d['Year'] = d['at'].year
+            d['Month'] = d['at'].month
+            d['Day'] = d['at'].day
+            d['Hour'] = d['at'].hour
+            d['Minute'] = d['at'].minute
+            d['DayOfWeek'] = d['at'].isoweekday()
+            d['AsOfDate'] = d['at'].replace(microsecond=0).isoformat()
+            d['Total'] = toint(m.group(7))
+            d['AvgStay'] = toint(m.group(8))
+            LOGGER.info("Total: {}  AvgStay: {}".format(d['Total'], d['AvgStay']))
+
+        l06(doc[6])
+
+
+        # Men / Women
+        def l10(line):
+            m = re.match("Men: ([\d,]+).*Women: ([\d,]+)", line)
+            d['Men'] = toint(m.group(1))
+            d['Wmn'] = toint(m.group(2))
+
+        l10(doc[10])
+
+        # Single Numbers
+        sn = [(7, 'MenFlnySent'),
+              (15, 'MenFlnySentStay'),
+              (17, 'WmnFlnySent'),
+              (21, 'WmnFlnySentStay'),
+
+              (8, 'MenMisdSent'),
+              (16, 'MenMisdSentStay'),
+              (18, 'WmnMisdSent'),
+              (22, 'WmnMisdSentStay'),
+
+              (24, 'MenFlnyUnsent'),
+              (28, 'MenFlnyUnsentStay'),
+              (30, 'WmnFlnyUnsent'),
+              (34, 'WmnFlnyUnsentStay'),
+
+              (25, 'MenMisdUnsent'),
+              (29, 'MenMisdUnsentStay'),
+              (31, 'WmnMisdUnsent'),
+              (35, 'WmnMisdUnsentStay'),
+
+              (37, 'Age18Less'),
+              (38, 'Age18_24'),
+              (39, 'Age25_34'),
+              (40, 'Age35_44'),
+              (41, 'Age45_54'),
+              (42, 'Age55Plus')]
+
+        for c in sn:
+            d[c[1]] = one_num(doc[c[0]])
+
+        show(d)
 
     def write(self):
         with open(self.text_file, 'w', 2, 'utf-8') as fp:
@@ -306,8 +411,9 @@ class MyError(Exception):
         return repr(self.message)
 
 
-def get_date(line: str) ->  datetime.datetime:
+def get_date(line: str) -> datetime.datetime:
     LOGGER.debug("Converting datetime string: {}".format(line))
+
     def p(x):
         if x is None:
             return 0
@@ -346,4 +452,3 @@ def line_is(line, value):
 def last_char_is(line, value):
     if line[-1] != value:
         raise ValueError(exc_msg)
-

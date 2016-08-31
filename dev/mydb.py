@@ -24,7 +24,7 @@ filename_dated = lambda base, ext: "{}_{}.{}".format(base,
                                                      ext)
 backup_ext = "bak"
 
-class DB:
+class DB(object):
     column_names = ['Year', 'Month', 'Day', 'Hour', 'Minute', 'DayOfWeek', 'AsOfDate', 'Total', 'AvgStay', 'Men',
                     'MenFlnySent', 'MenFlnySentStay', 'MenMisdSent', 'MenMisdSentStay', 'MenFlnyUnsent',
                     'MenFlnyUnsentStay', 'MenMisdUnsent', 'MenMisdUnsentStay', 'Wmn', 'WmnFlnySent', 'WmnFlnySentStay',
@@ -52,7 +52,7 @@ class DB:
         if not os.path.exists(self.backup_dir):
             os.mkdir(self.backup_dir)
 
-    def save(self, data: dict) -> None:
+    def save(self, data: dict) -> bool:
         if not self.active:
             LOGGER.warning("Data not saved to the Database - configured as inactive!")
             return
@@ -107,12 +107,15 @@ class DB:
 
         except lite.IntegrityError:
             LOGGER.warning("The data is already in the database!")
+            return False
 
         except Exception as e:
             LOGGER.exception("save_to_db() failed:")
+            return False
 
         finally:
             conn.close()
+        return True
 
     def fetchall(self) -> list:
         if not self.active:

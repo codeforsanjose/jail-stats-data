@@ -48,7 +48,7 @@ class MyError(Exception):
     def __str__(self):
         return repr(self.message)
 
-class Download:
+class Download(object):
     def __init__(self, url: str, target: str, retries: int, retry_delay: int, timeout: int = 3) -> object:
         self.url = url
         self.target = target
@@ -127,11 +127,12 @@ def capture():
     LOGGER.debug("Stats data: {}".format(pformat(stats)))
 
     # Save to database
-    _database.save(stats)
+    save_ok = _database.save(stats)
     _database.maintain()
 
     # Write to spreadsheet
-    Spreadsheet(data=stats, **_GSPREAD)()
+    if save_ok or _OPTIONS.save_to_gs:
+        Spreadsheet(data=stats, **_GSPREAD)()
 
     # Cleanup the archive
     maintain_archive()
@@ -144,16 +145,18 @@ def main():
 
     parser = argparse.ArgumentParser(
         description='This program queries the current Santa Clara Country Sheriff Daily Jail Population Statistics, pushes the data into the "jailstats" SQLite DB, and uploads the data to the Google Spreadsheet.')
+    parser.add_argument("-a", "--gs_all", default=False, dest="save_all_to_gs", action="store_true",
+                        help="Upload ALL data in the database to the Google spreadsheet.  NOTE: the spreadsheet is NOT cleared, so this may cause duplicates!")
     parser.add_argument("-d", "--debug", default=False, dest="debug", action="store_true",
                         help="Run in test mode, with debug logging.")
-    parser.add_argument("-m", "--mode", default="immediate", dest="mode", type=str, choices=['immediate', 'scheduled'],
-                        help="Must be either \"scheduled\" or \"immediate\".  The default is \"immediate\".")
     parser.add_argument("-f", "--file", dest="in_file", type=str,
                         help="Specifies a local PDF file as input.")
-    parser.add_argument("-s", "--save", default=False, dest="save_to_db", action="store_true",
-                        help="Upload ALL data in the database to the Google spreadsheet.  NOTE: the spreadsheet is NOT cleared, so this may cause duplicates!")
+    parser.add_argument("-s", "--spreadsheet", default=False, dest="save_to_gs", action="store_true",
+                        help="Write the data to the Google spreadsheet, even if the data is already present in the SQLite DB.")
     parser.add_argument("env", action="store", type=str, choices=['test', 'prod', 'ptest'],
                         help="The run environment - must be one of the following: test, prod or ptest.")
+    parser.add_argument("-m", "--mode", default="immediate", dest="mode", type=str, choices=['immediate', 'scheduled'],
+                        help="Must be either \"scheduled\" or \"immediate\".  The default is \"immediate\".")
     _OPTIONS = parser.parse_args()
     show.set(show=_OPTIONS.debug)
     show(_OPTIONS)
@@ -176,7 +179,7 @@ def main():
     _database = mydb.DB(**_DATABASE)
 
     # Save to DB
-    if _OPTIONS.save_to_db:
+    if _OPTIONS.save_all_to_gs:
         print("Initiating Save To DB...")
         save_all_to_gs()
 

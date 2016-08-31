@@ -2,7 +2,7 @@
 
 from pprint import pprint
 
-class T1:
+class T1(object):
     def __init__(self, x="x", y="y"):
         self.x = x
         self.y = y
